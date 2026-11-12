@@ -1,0 +1,28 @@
+{
+  "targets": {
+    "ElementX": {
+      "settings": {
+        "base": {
+          "MARKETING_VERSION": "1.0.0",
+          "CURRENT_PROJECT_VERSION": "10"
+        }
+      }
+    },
+    "NSE": {
+      "settings": {
+        "base": {
+          "MARKETING_VERSION": "1.0.0",
+          "CURRENT_PROJECT_VERSION": "10"
+        }
+      }
+    },
+    "ShareExtension": {
+      "settings": {
+        "base": {
+          "MARKETING_VERSION": "1.0.0",
+          "CURRENT_PROJECT_VERSION": "10"
+        }
+      }
+    }
+  }
+}

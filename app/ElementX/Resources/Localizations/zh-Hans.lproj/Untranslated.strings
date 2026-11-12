@@ -1,0 +1,45 @@
+
+// CHIICH receiver-only AI
+"screen_chiich_receiver_ai_title" = "CHIICH AI";
+"screen_chiich_receiver_ai_enabled" = "处理收到的消息";
+"screen_chiich_receiver_ai_language" = "我的语言";
+"screen_chiich_receiver_ai_ready" = "AI 已连接";
+"screen_chiich_receiver_ai_checking" = "正在检查连接…";
+"screen_chiich_receiver_ai_unavailable" = "AI 暂不可用，聊天仍可正常使用。";
+"screen_chiich_receiver_ai_off" = "AI 已关闭";
+"screen_chiich_receiver_ai_transcript" = "转写文本";
+"screen_chiich_receiver_ai_translated_transcript" = "转写译文";
+"action_chiich_show_original" = "显示原文";
+"action_chiich_show_processed" = "显示 AI 版本";
+
+// CHIICH public usernames and invitations
+"screen_chiich_identity_username" = "用户名";
+"screen_chiich_identity_choose_username" = "选择用户名";
+"screen_chiich_identity_my_link" = "我的链接";
+"screen_chiich_identity_invite_friend" = "邀请";
+"screen_chiich_identity_username_hint" = "3–24 个字母或数字。拉丁字母或西里尔字母，不混用。";
+"screen_chiich_identity_refresh" = "刷新用户名";
+"screen_chiich_identity_opening" = "正在打开个人资料…";
+"screen_chiich_identity_invalid_username" = "请选择 3–24 个字母和数字，不要混用拉丁字母和西里尔字母。此名称可能已被保留。";
+"screen_chiich_identity_conflict" = "此用户名已被使用，或个人资料已在其他设备上更改。请刷新后重试。";
+"screen_chiich_identity_alias_limit" = "用户名更改次数已达上限。您可以恢复使用以前的用户名。";
+"screen_chiich_identity_rate_limited" = "请稍候再试。";
+"screen_chiich_identity_not_found" = "此个人资料已不可用。请检查邀请链接。";
+"screen_chiich_identity_unavailable" = "无法加载用户名。请检查网络连接后重试。";
+"screen_chiich_identity_session_changed" = "请重新登录您的账户以继续。";
+"screen_chiich_identity_uncertain" = "连接已中断。再次尝试前，请刷新以确认用户名是否已保存。";
+
+// Optional AI for messages
+"screen_chiich_ai_consent_manage" = "聊天中的 AI";
+"screen_chiich_ai_consent_transfer" = "启用 AI 后，CHIICH 可以自动翻译或改写收到的文字，并将语音消息转成文字。为此，CHIICH 会将消息文字、录音或转写文本发送给 ProxyAPI，再由 ProxyAPI 转交给包括 OpenAI 在内的模型提供方。";
+"screen_chiich_ai_consent_peer" = "启用后，也允许已在 CHIICH 启用 AI 的联系人处理您发给他们的文字和语音消息。只有发送者和接收者均同意，AI 才会处理该消息。";
+"screen_chiich_ai_consent_control" = "您可以继续聊天而不使用 AI。要撤回对后续处理的授权，请在 CHIICH 设置中关闭 AI。更改同步到服务器后，也会对其他参与者生效。";
+"screen_chiich_ai_consent_enable" = "启用 AI";
+"screen_chiich_ai_consent_decline" = "不启用 AI，继续聊天";
+"screen_chiich_ai_consent_disable" = "关闭 AI 并撤回授权";
+"screen_chiich_ai_consent_sync_failure" = "您的选择尚未同步到服务器。请联网后重试，以便让更改对其他参与者生效。";
+"screen_chiich_ai_consent_summary" = "消息翻译、改写、语音转写和 AI 计划助手需要将数据发送给外部 AI 处理服务。";
+"screen_chiich_ai_consent_optional" = "不启用 AI 也能正常聊天。您可以随时在设置中更改选择。";
+"screen_chiich_ai_consent_details" = "技术详情";
+"screen_chiich_ai_consent_no" = "不使用 AI";
+"screen_chiich_ai_consent_yes" = "同意";

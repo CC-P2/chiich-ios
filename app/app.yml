@@ -1,0 +1,10 @@
+settings:
+  APP_DISPLAY_NAME: CHIICH
+  PRODUCTION_APP_NAME: CHIICH
+  APP_GROUP_IDENTIFIER: group.one.chiich
+  BASE_BUNDLE_IDENTIFIER: one.chiich.app
+  ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: "colors/accent-color"
+  # Proposed unsigned identifiers; register these with the owning Apple team before device builds.
+  DEVELOPMENT_TEAM: ""
+  IS_NIGHTLY_BUILD: false
+

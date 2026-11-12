@@ -1,0 +1,54 @@
+"soft_logout_clear_data_dialog_content" = "Clear all data currently stored on this device?\nSign in again to access your account data and messages.";
+"soft_logout_clear_data_dialog_title" = "Clear data";
+"soft_logout_clear_data_notice" = "Warning: Your personal data (including encryption keys) is still stored on this device.\n\nClear it if you’re finished using this device, or want to sign in to another account.";
+"soft_logout_clear_data_submit" = "Clear all data";
+"soft_logout_clear_data_title" = "Clear personal data";
+"soft_logout_signin_e2e_warning_notice" = "Sign in to recover encryption keys stored exclusively on this device. You need them to read all of your secure messages on any device.";
+"soft_logout_signin_notice" = "Your homeserver (%1$s) admin has signed you out of your account %2$s (%3$s).";
+"soft_logout_signin_title" = "Sign in";
+"untranslated" = "Untranslated";
+
+// CHIICH receiver-only AI
+"screen_chiich_receiver_ai_title" = "CHIICH AI";
+"screen_chiich_receiver_ai_enabled" = "Process incoming messages";
+"screen_chiich_receiver_ai_language" = "My language";
+"screen_chiich_receiver_ai_ready" = "AI is connected";
+"screen_chiich_receiver_ai_checking" = "Checking connection…";
+"screen_chiich_receiver_ai_unavailable" = "AI is unavailable. Chat is working.";
+"screen_chiich_receiver_ai_off" = "AI is off";
+"screen_chiich_receiver_ai_transcript" = "Transcript";
+"screen_chiich_receiver_ai_translated_transcript" = "Translated transcript";
+"action_chiich_show_original" = "Show original";
+"action_chiich_show_processed" = "Show AI version";
+
+// CHIICH public usernames and invitations
+"screen_chiich_identity_username" = "Username";
+"screen_chiich_identity_choose_username" = "Choose a username";
+"screen_chiich_identity_my_link" = "My link";
+"screen_chiich_identity_invite_friend" = "Invite";
+"screen_chiich_identity_username_hint" = "3–24 letters or digits. Latin or Cyrillic, without mixing.";
+"screen_chiich_identity_refresh" = "Refresh username";
+"screen_chiich_identity_opening" = "Opening profile…";
+"screen_chiich_identity_invalid_username" = "Choose 3–24 Latin or Cyrillic letters and digits, without mixing alphabets. This name may be reserved.";
+"screen_chiich_identity_conflict" = "This username is taken or your profile changed on another device. Refresh and try again.";
+"screen_chiich_identity_alias_limit" = "The username change limit has been reached. You can reuse one of your previous usernames.";
+"screen_chiich_identity_rate_limited" = "Please wait a moment and try again.";
+"screen_chiich_identity_not_found" = "This profile is no longer available. Check the invitation link.";
+"screen_chiich_identity_unavailable" = "Couldn't load the username. Check your connection and try again.";
+"screen_chiich_identity_session_changed" = "Sign in to your account again to continue.";
+"screen_chiich_identity_uncertain" = "The connection was interrupted. Refresh to check whether the username was saved before trying again.";
+
+// Optional AI for messages
+"screen_chiich_ai_consent_manage" = "AI for messages";
+"screen_chiich_ai_consent_transfer" = "If you turn on AI, CHIICH can automatically translate or rephrase incoming text and transcribe voice messages. It sends the message text, voice recording or transcript to ProxyAPI, which forwards it to model providers including OpenAI.";
+"screen_chiich_ai_consent_peer" = "By turning this on, you also allow people who use AI in CHIICH to process text and voice messages you send them. AI only processes a message when both its sender and its recipient allow it.";
+"screen_chiich_ai_consent_control" = "You can keep chatting without AI. To withdraw permission for future processing, turn it off in Settings under CHIICH AI. The change takes effect for other participants when it syncs with the server.";
+"screen_chiich_ai_consent_enable" = "Turn on AI";
+"screen_chiich_ai_consent_decline" = "Continue without AI";
+"screen_chiich_ai_consent_disable" = "Turn off AI and withdraw permission";
+"screen_chiich_ai_consent_sync_failure" = "Your choice hasn’t synced with the server. Retry when you’re online to apply it for other participants.";
+"screen_chiich_ai_consent_summary" = "Message translation, rewriting, transcription and AI planner support require sending data to an external AI processor.";
+"screen_chiich_ai_consent_optional" = "You can chat without AI. Change your choice in Settings at any time.";
+"screen_chiich_ai_consent_details" = "About the technology";
+"screen_chiich_ai_consent_no" = "Without AI";
+"screen_chiich_ai_consent_yes" = "I agree";

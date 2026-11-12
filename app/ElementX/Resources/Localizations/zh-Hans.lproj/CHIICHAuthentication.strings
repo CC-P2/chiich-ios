@@ -1,0 +1,7 @@
+"chiich_login_tagline" = "人类 AI 人类";
+"chiich_login_connection_error" = "无法连接到 CHIICH。请检查网络连接后重试。";
+"chiich_sso_apple" = "使用 Apple 登录";
+"chiich_sso_google" = "使用 Google 登录";
+"chiich_sso_first_login" = "首次登录将创建您的 CHIICH 账户。";
+"chiich_password_login" = "使用密码登录";
+"chiich_hide_password_login" = "收起密码登录";

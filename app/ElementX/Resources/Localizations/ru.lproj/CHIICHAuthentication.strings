@@ -1,0 +1,7 @@
+"chiich_login_tagline" = "Человек ИИ Человек";
+"chiich_login_connection_error" = "Не удалось подключиться к CHIICH. Проверьте подключение и попробуйте ещё раз.";
+"chiich_sso_apple" = "Продолжить с Apple";
+"chiich_sso_google" = "Продолжить с Google";
+"chiich_sso_first_login" = "Первый вход создаст ваш аккаунт CHIICH.";
+"chiich_password_login" = "Войти с паролем";
+"chiich_hide_password_login" = "Скрыть вход с паролем";

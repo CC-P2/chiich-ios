@@ -1,0 +1,77 @@
+{
+  "repository": "https://github.com/element-hq/element-x-ios",
+  "tag": "release/26.10.8",
+  "commit": "27cdd980dcce083b939935521fdcc9a754e18244",
+  "archive_url": "https://codeload.github.com/element-hq/element-x-ios/tar.gz/27cdd980dcce083b939935521fdcc9a754e18244",
+  "archive_sha256": "946e71e8a1935adb6d16119e43bd2f510002b1f7e737e31a80e6729cb7fe3aec",
+  "matrix_rust_sdk": "26.10.24",
+  "patches": [
+    {
+      "path": "patches/configuration.patch",
+      "sha256": "f8ab7be517d9b219a77df755942557b15b423470956e6b508ee0b3a1f6f6d357"
+    },
+    {
+      "path": "patches/authentication.patch",
+      "sha256": "a6c57df204823f93f2db25abf1dbb08cd8ee1bf94eecfee20b3a33c4bc78fce9"
+    },
+    {
+      "path": "patches/native-experience.patch",
+      "sha256": "2e0ce6f2f70e519a5a9f3abc88f802b9e1e7d791101a2d0df71b75a9d0af0e4c"
+    },
+    {
+      "path": "patches/feature-parity.patch",
+      "sha256": "21a93857a391d541be30b55b0c3d6dd24537c673ef12f4a06a6849c2b39af57d"
+    },
+    {
+      "path": "patches/services-activation.patch",
+      "sha256": "750bb241ba2f73d47349d63a61535f7e033d0c9f334ee092cfc06cf41f0493d2"
+    },
+    {
+      "path": "patches/identity-choice.patch",
+      "sha256": "d110c24a8f1c38263949878f3c2d436311ace8d45e4e4cfcbe0818437e6b450a"
+    },
+    {
+      "path": "patches/username-login.patch",
+      "sha256": "67b95dbb0004d7813b6541726404001bd1083774d36efe0e3526385b77ba9d09"
+    },
+    {
+      "path": "patches/privacy-consent.patch",
+      "sha256": "3a8d30a5a575ee087ba3c3a218f2375c110ea0558c3c383fae8131a6dc75d613"
+    },
+    {
+      "path": "patches/first-chat-consent.patch",
+      "sha256": "ab273b8953f0ca90814a438e6169a6551f17d93887b9b7794c41e56011b5e248"
+    },
+    {
+      "path": "patches/plaintext-onboarding.patch",
+      "sha256": "84e92ad7cdfc066ed066203fa43e71673af9ee3f2c29fa9402c33f1a01973583"
+    }
+  ],
+  "assets": [
+    {
+      "path": "assets/app-logo.svg",
+      "sha256": "3ccfdcf282bea0378013e78a3db233885f2ee4ff79474b1289e6c86b36cc2131",
+      "target": "ElementX/Resources/Assets.xcassets/images/app-logo.imageset/app-logo.svg"
+    },
+    {
+      "path": "assets/app-logo-Contents.json",
+      "sha256": "daa7a490a9a1b175283843213c7d453f886b000bf04956696f925a2286a6df9a",
+      "target": "ElementX/Resources/Assets.xcassets/images/app-logo.imageset/Contents.json"
+    },
+    {
+      "path": "assets/AppIcon.png",
+      "sha256": "27ee250b4fdf6abd84352e69b08827aaeecf2d064142ca96f80fa2349cc7bcd9",
+      "target": "ElementX/Resources/AppIcon.icon/Assets/AppIcon.png"
+    },
+    {
+      "path": "../brand-welcome/public/chiich-assets/wplus-light.png",
+      "sha256": "ac74236bae2637abace0fb0f1d3137b3be178912cecf24a53133c19f6392dfa5",
+      "target": "ElementX/Resources/Assets.xcassets/images/chiich-wplus.imageset/wplus-light.png"
+    },
+    {
+      "path": "../brand-welcome/public/chiich-assets/wplus-dark.png",
+      "sha256": "c38b8169e77582ac96bea52969e190ff23d31ef53f8ead014d34661192a1ce16",
+      "target": "ElementX/Resources/Assets.xcassets/images/chiich-wplus.imageset/wplus-dark.png"
+    }
+  ]
+}

@@ -1,0 +1,7 @@
+"chiich_login_tagline" = "Human AI Human";
+"chiich_login_connection_error" = "Couldn't connect to CHIICH. Check your connection and try again.";
+"chiich_sso_apple" = "Continue with Apple";
+"chiich_sso_google" = "Continue with Google";
+"chiich_sso_first_login" = "Your first sign-in creates your CHIICH account.";
+"chiich_password_login" = "Sign in with password";
+"chiich_hide_password_login" = "Hide password sign-in";
