@@ -1,0 +1,77 @@
+[
+  {
+    "path": "Components/DevelopmentAssets/Media/preview_image.jpg",
+    "size": 758843,
+    "sha256": "83c6adf9c32cf37cef14510e2ed9af925b8ef384f6507d7dd590132871ab9917"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/preview_avatar_user.jpg",
+    "size": 475183,
+    "sha256": "ff47f9b60b2cb0b13fab7f2a55dabc988a2cfbab75b23c8a9301c13f69592449"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/portrait_test_video.mp4",
+    "size": 2004302,
+    "sha256": "0b1465b1e379f4356e0cbde2ecc1a9cd2a58c7a69be7ca9f7b3b2df2e911e60c"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/test_apple_image.heic",
+    "size": 1827200,
+    "sha256": "9f110a5cd97e0e9b38258833274944e816f36379631eeb6883ddf6babb9bef37"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/test_pdf.pdf",
+    "size": 176081,
+    "sha256": "9566448c2b7ee28833c0dac515405e88e49351006103bca037a2a53242da9828"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/landscape_test_video.mov",
+    "size": 4017324,
+    "sha256": "385db55be6b9f4d7bc45b5dcd73ccff82d0e1b8ba0f642f755c4c5c3f8efd2ae"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/test_image.png",
+    "size": 6163,
+    "sha256": "c3ff2e57850649f588516a1a2688be18df8cf8a0bb8850f8d943cf28659beca5"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/test_voice_message.m4a",
+    "size": 73804,
+    "sha256": "48972317dcd3999050bd6d0ef0dd97a1979089029460282892dc0f17b8449ac5"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/test_rotated_image.jpg",
+    "size": 1735894,
+    "sha256": "094ceac734f4461ae9f1c47eae58c13270da6f407718b12e3142cac3dc0b38a7"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/preview_avatar_room.jpg",
+    "size": 503787,
+    "sha256": "1aa940ac6487babcc3d44258672bc8641b37ecd4a2d88a0450029861b252ac1f"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/landscape_test_image.jpg",
+    "size": 2298757,
+    "sha256": "79da65d0e46d2d7520db60a9e39513484cab5f37b797d1745a921d8a7014aebb"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/test_audio.mp3",
+    "size": 194811,
+    "sha256": "f2dc7ac6a80fd59646c736451ea3df42da1714a3de5ae4f3226f2168b7f80875"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/preview_video.jpg",
+    "size": 473199,
+    "sha256": "27b573d45f1cd8d22bf6a31ee5f01b316e6466f5f98094e50be716e669a6bb2c"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/test_animated_image.gif",
+    "size": 1897131,
+    "sha256": "5620e35a28235cc36a4022a1a35849ec5b67eacf5e58c993161d2972cd5ff518"
+  },
+  {
+    "path": "Components/DevelopmentAssets/Media/portrait_test_image.jpg",
+    "size": 3059441,
+    "sha256": "3b618d6055c7d4fb53e5edb487a5c1a6fdee0fb966c7910df95e01b612c3b2ad"
+  }
+]

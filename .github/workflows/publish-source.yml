@@ -1,0 +1,38 @@
+name: Publish verified CHIICH source
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/publish-source.yml
+      - scripts/materialize_source.py
+      - source-dependencies/manifest.json
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-corresponding-source
+  cancel-in-progress: false
+
+jobs:
+  source:
+    if: github.repository == 'CC-P2/chiich-ios'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - name: Check the original source preparation tests
+        run: python3 scripts/check_source.py
+      - name: Materialize pinned source and dependency archives
+        run: python3 scripts/materialize_source.py
+      - name: Publish source only, without building or distributing an app
+        run: |
+          git config user.name 'CHIICH source publisher'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app source-dependencies SOURCE-PROVENANCE.json SHA256SUMS
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m 'Publish verified source for CHIICH iOS 1.0.0 build 10'
+          git push origin HEAD:main
+

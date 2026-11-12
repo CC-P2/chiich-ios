@@ -1,0 +1,388 @@
+name: CHIICH iOS device and TestFlight
+
+# No push, PR, timer or repository_dispatch can reach signing credentials.
+# GitHub requires this dispatch entry on the default branch before it is runnable;
+# Select the native branch for release work. Only status reads may also use the
+# exact recovery branch allowlisted below; never select web production.
+on:
+  workflow_dispatch:
+    inputs:
+      source_sha:
+        description: Exact reviewed 40-character workflow commit (native or allowlisted status branch)
+        required: true
+        type: string
+      mode:
+        description: Unsigned verification, signed package, one upload, or read-only status
+        required: true
+        default: unsigned-device
+        type: choice
+        options: [unsigned-device, signed-archive, testflight-upload, testflight-status]
+      service_mode:
+        description: Native policy; links-only needs main Associated Domains, enabled also needs APNs and NSE filtering
+        required: true
+        default: disabled-trial
+        type: choice
+        options: [disabled-trial, links-only, services-enabled]
+      version:
+        description: CHIICH version (three numbers)
+        required: true
+        default: 0.1.0
+        type: string
+      build:
+        description: New CFBundleVersion, for example 1 or 2026.11.2
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+env:
+  CHIICH_SERVICE_MODE: ${{ inputs.service_mode || 'disabled-trial' }}
+
+concurrency:
+  group: chiich-ios-device-distribution
+  # Never interrupt an upload whose result could become uncertain.
+  cancel-in-progress: false
+
+jobs:
+  check:
+    if: github.repository == 'CC-P2/chiich' && github.ref == 'refs/heads/feature/chiich-element-x-ios'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Require exact reviewed source and valid version
+        env:
+          EXPECTED_SOURCE_SHA: ${{ inputs.source_sha }}
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: |
+          python3 - <<'PY'
+          import importlib.util, os, re, subprocess
+          sha = os.environ['EXPECTED_SOURCE_SHA']
+          assert re.fullmatch(r'[a-f0-9]{40}', sha), 'Use the full reviewed commit SHA'
+          assert sha == os.environ['GITHUB_SHA'] == subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'Source changed after review'
+          spec = importlib.util.spec_from_file_location('signing', 'src/element-x-ios/signing.py')
+          module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+          module.validate_version(os.environ['CHIICH_VERSION'], os.environ['CHIICH_BUILD'])
+          PY
+      - name: Validate reviewed native services before any credential job
+        run: python3 src/element-x-ios/signing.py check-services --service-mode "$CHIICH_SERVICE_MODE"
+      - name: Validate source and signing checks without credentials
+        run: |
+          python3 -m unittest discover -s src/element-x-ios -p 'test_*.py'
+          python3 -m unittest discover -s scripts/testflight_release -p 'test_*.py'
+          npm run check
+          npm test
+          npm run build
+
+  unsigned-device:
+    needs: check
+    if: inputs.mode == 'unsigned-device'
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: element-hq/element-x-ios
+          ref: 27cdd980dcce083b939935521fdcc9a754e18244
+          path: .build/chiich-ios
+          persist-credentials: false
+          submodules: false
+      - name: Prepare pinned native source and Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.app
+          xcodebuild -version
+          brew install xcodegen swiftgen sourcery git-lfs
+          git -C .build/chiich-ios lfs pull --include='Components/DevelopmentAssets/Media/**' --exclude=''
+          python3 src/element-x-ios/prepare.py --source .build/chiich-ios
+      - name: Configure version and generate project
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: |
+          python3 src/element-x-ios/signing.py unsigned --source .build/chiich-ios --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --service-mode "$CHIICH_SERVICE_MODE"
+          cd .build/chiich-ios
+          xcodegen
+      - name: Compile Release for a real-device architecture without credentials
+        working-directory: .build/chiich-ios
+        run: >-
+          xcodebuild -quiet archive -project ElementX.xcodeproj -scheme ElementX
+          -configuration Release -destination 'generic/platform=iOS'
+          -archivePath ../CHIICH-unsigned.xcarchive -derivedDataPath ../DeviceDerivedData
+          -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile
+          ARCHS=arm64 ONLY_ACTIVE_ARCH=YES CODE_SIGNING_ALLOWED=NO
+          CODE_SIGNING_REQUIRED=NO DEVELOPMENT_TEAM=
+      - name: Verify actual unsigned archive identities and versions
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: python3 src/element-x-ios/signing.py verify --archive .build/CHIICH-unsigned.xcarchive --unsigned --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --service-mode "$CHIICH_SERVICE_MODE"
+      - name: Record verification limit
+        run: echo 'Unsigned device compilation passed. This is not an installable package or device/login acceptance.' >> "$GITHUB_STEP_SUMMARY"
+
+  signed-archive:
+    needs: check
+    if: inputs.mode == 'signed-archive' || inputs.mode == 'testflight-upload'
+    # Scope signing secrets to this environment and only the native branch.
+    environment: chiich-ios-signing
+    runs-on: xcode-27
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: element-hq/element-x-ios
+          ref: 27cdd980dcce083b939935521fdcc9a754e18244
+          path: .build/chiich-ios
+          persist-credentials: false
+          submodules: false
+      - name: Prepare pinned native source before loading signing material
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.app
+          xcodebuild -version
+          brew install xcodegen swiftgen sourcery git-lfs
+          git -C .build/chiich-ios lfs pull --include='Components/DevelopmentAssets/Media/**' --exclude=''
+          python3 src/element-x-ios/prepare.py --source .build/chiich-ios
+      - name: Compile and self-test Apple status token helper before loading secrets
+        if: inputs.mode == 'testflight-upload'
+        run: |
+          swiftc scripts/testflight_release/apple_token.swift -o "$RUNNER_TEMP/chiich-apple-token"
+          "$RUNNER_TEMP/chiich-apple-token" --self-test
+      - name: Validate and install only the supplied CHIICH signing assets
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+          CHIICH_IOS_DISTRIBUTION_P12_BASE64: ${{ secrets.CHIICH_IOS_DISTRIBUTION_P12_BASE64 }}
+          CHIICH_IOS_DISTRIBUTION_P12_PASSWORD: ${{ secrets.CHIICH_IOS_DISTRIBUTION_P12_PASSWORD }}
+          CHIICH_IOS_PROFILE_APP_BASE64: ${{ secrets.CHIICH_IOS_PROFILE_APP_BASE64 }}
+          CHIICH_IOS_PROFILE_NSE_BASE64: ${{ secrets.CHIICH_IOS_PROFILE_NSE_BASE64 }}
+          CHIICH_IOS_PROFILE_SHARE_BASE64: ${{ secrets.CHIICH_IOS_PROFILE_SHARE_BASE64 }}
+        run: python3 src/element-x-ios/signing.py install --source .build/chiich-ios --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --service-mode "$CHIICH_SERVICE_MODE"
+      - name: Generate project with a separate profile for every target
+        working-directory: .build/chiich-ios
+        run: xcodegen
+      - name: Archive with existing manual profiles only
+        working-directory: .build/chiich-ios
+        run: >-
+          xcodebuild -quiet archive -project ElementX.xcodeproj -scheme ElementX
+          -configuration Release -destination 'generic/platform=iOS'
+          -archivePath ../CHIICH.xcarchive -derivedDataPath ../DeviceDerivedData
+          -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile
+          ARCHS=arm64 ONLY_ACTIVE_ARCH=YES
+      - name: Verify signed app and both extensions
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: python3 src/element-x-ios/signing.py verify --archive .build/CHIICH.xcarchive --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --service-mode "$CHIICH_SERVICE_MODE"
+      - name: Export App Store Connect package without uploading
+        run: >-
+          xcodebuild -quiet -exportArchive -archivePath .build/CHIICH.xcarchive
+          -exportPath .build/export -exportOptionsPlist "$RUNNER_TEMP/chiich-ios-signing/ExportOptions.plist"
+      - name: Verify and prepare the exact package artifact
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: |
+          python3 src/element-x-ios/signing.py package --export-dir .build/export --output .build/distribution --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --source-sha "$GITHUB_SHA" --service-mode "$CHIICH_SERVICE_MODE"
+      - name: Preserve signed package and provenance, never signing secrets
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-signed-package
+          path: .build/distribution/
+          retention-days: 7
+          if-no-files-found: error
+      - name: Remove all temporary signing assets
+        if: always()
+        run: python3 src/element-x-ios/signing.py cleanup
+
+  testflight-upload:
+    needs: signed-archive
+    if: inputs.mode == 'testflight-upload'
+    # Upload gets only its API credential; the signing p12 stays in the other job.
+    environment: chiich-testflight
+    runs-on: xcode-27
+    timeout-minutes: 30
+    steps:
+      - name: Reject repeated upload attempts before loading credentials
+        run: |
+          if [ "$GITHUB_RUN_ATTEMPT" != '1' ]; then
+            echo 'Upload reruns are blocked. Inspect this exact build in App Store Connect before a separately reviewed release.' >&2
+            exit 1
+          fi
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: CHIICH-iOS-signed-package
+          path: .build/distribution
+      - name: Verify package identity, source and digest before loading the API key
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.app
+          python3 src/element-x-ios/signing.py verify-package --directory .build/distribution --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --source-sha "$GITHUB_SHA" --service-mode "$CHIICH_SERVICE_MODE"
+      - name: Compile and self-test Apple token helper without credentials
+        run: |
+          swiftc scripts/testflight_release/apple_token.swift -o "$RUNNER_TEMP/chiich-apple-token"
+          "$RUNNER_TEMP/chiich-apple-token" --self-test
+      - name: Validate with Apple and upload once to CHIICH
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+          CHIICH_ASC_KEY_ID: ${{ vars.CHIICH_ASC_KEY_ID }}
+          CHIICH_ASC_ISSUER_ID: ${{ vars.CHIICH_ASC_ISSUER_ID }}
+          CHIICH_ASC_PRIVATE_KEY_P8: ${{ secrets.CHIICH_ASC_PRIVATE_KEY_P8 }}
+          CHIICH_ASC_PRIVATE_KEY_P8_BASE64: ${{ secrets.CHIICH_ASC_PRIVATE_KEY_P8_BASE64 }}
+        run: >-
+          python3 src/element-x-ios/signing.py upload --ipa .build/distribution/CHIICH.ipa
+          --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --app-id 6829606447
+          --key-id "$CHIICH_ASC_KEY_ID" --issuer-id "$CHIICH_ASC_ISSUER_ID"
+      - name: Verify Apple processing and the existing internal testing group
+        env:
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+          CHIICH_ASC_KEY_ID: ${{ vars.CHIICH_ASC_KEY_ID }}
+          CHIICH_ASC_ISSUER_ID: ${{ vars.CHIICH_ASC_ISSUER_ID }}
+          CHIICH_ASC_PRIVATE_KEY_P8: ${{ secrets.CHIICH_ASC_PRIVATE_KEY_P8 }}
+          CHIICH_ASC_PRIVATE_KEY_P8_BASE64: ${{ secrets.CHIICH_ASC_PRIVATE_KEY_P8_BASE64 }}
+        run: >-
+          python3 scripts/testflight_release/complete_release.py
+          --version "$CHIICH_VERSION" --build "$CHIICH_BUILD" --source-sha "$GITHUB_SHA"
+          --key-id "$CHIICH_ASC_KEY_ID" --issuer-id "$CHIICH_ASC_ISSUER_ID"
+          --token-helper "$RUNNER_TEMP/chiich-apple-token"
+          --output .build/testflight-status/receipt.json
+      - name: Record the actual TestFlight availability separately from upload
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path('.build/testflight-status/receipt.json')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              if path.exists():
+                  result = json.loads(path.read_text())
+                  summary.write('## CHIICH TestFlight result\n\n')
+                  for field in ('version', 'build', 'upload_accepted', 'build_state', 'group_assigned', 'internal_build_state', 'ready_for_internal_testing'):
+                      summary.write(f'- {field}: {result.get(field)}\n')
+              else:
+                  summary.write('No verified TestFlight availability receipt. Inspect this exact version/build before repeating any upload.\n')
+          PY
+      - name: Preserve non-secret TestFlight status and assignment claim
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-TestFlight-status
+          path: .build/testflight-status/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Remove temporary upload key
+        if: always()
+        run: python3 src/element-x-ios/signing.py cleanup
+
+  testflight-status:
+    # No dependency on any build/upload job. The recovery branch can reach only
+    # this GET-only job; all original native release guards remain unchanged.
+    if: >-
+      github.repository == 'CC-P2/chiich' && inputs.mode == 'testflight-status' &&
+      (github.ref == 'refs/heads/feature/chiich-element-x-ios' ||
+       github.ref == 'refs/heads/ci/chiich-testflight-status-20261105')
+    environment: chiich-testflight
+    permissions:
+      contents: read
+      actions: read
+    runs-on: xcode-27
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Require reviewed status workflow and original release version
+        env:
+          EXPECTED_WORKFLOW_SHA: ${{ inputs.source_sha }}
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: |
+          python3 - <<'PY'
+          import os, re, subprocess
+          sha = os.environ['EXPECTED_WORKFLOW_SHA']
+          assert re.fullmatch(r'[a-f0-9]{40}', sha), 'Use the full reviewed workflow commit SHA'
+          assert sha == os.environ['GITHUB_SHA'] == subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(), 'Workflow changed after review'
+          assert os.environ['GITHUB_RUN_ATTEMPT'] == '1', 'Start a separately reviewed status dispatch'
+          assert os.environ['CHIICH_VERSION'] == '1.0.0' and os.environ['CHIICH_BUILD'] == '5', 'Only the accepted 1.0.0 (5) upload is in scope'
+          PY
+      - name: Test status boundaries without credentials
+        run: python3 -m unittest discover -s scripts/testflight_release -p 'test_*.py'
+      - name: Read the exact retained receipt from the accepted upload
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          artifact-ids: '13383438734'
+          run-id: '41955770890'
+          repository: CC-P2/chiich
+          github-token: ${{ github.token }}
+          path: .build/accepted-testflight-status
+          merge-multiple: true
+      - name: Verify original receipt digest and identity before Apple credentials
+        env:
+          EXPECTED_WORKFLOW_SHA: ${{ inputs.source_sha }}
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+        run: >-
+          python3 scripts/testflight_release/read_status.py verify
+          --version "$CHIICH_VERSION" --build "$CHIICH_BUILD"
+          --workflow-sha "$EXPECTED_WORKFLOW_SHA"
+      - name: Compile and self-test the existing token helper without credentials
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.app
+          swiftc scripts/testflight_release/apple_token.swift -o "$RUNNER_TEMP/chiich-apple-token"
+          "$RUNNER_TEMP/chiich-apple-token" --self-test
+      - name: Read current TestFlight status with the same existing credential
+        env:
+          EXPECTED_WORKFLOW_SHA: ${{ inputs.source_sha }}
+          CHIICH_VERSION: ${{ inputs.version }}
+          CHIICH_BUILD: ${{ inputs.build }}
+          CHIICH_ASC_KEY_ID: ${{ vars.CHIICH_ASC_KEY_ID }}
+          CHIICH_ASC_ISSUER_ID: ${{ vars.CHIICH_ASC_ISSUER_ID }}
+          CHIICH_ASC_PRIVATE_KEY_P8: ${{ secrets.CHIICH_ASC_PRIVATE_KEY_P8 }}
+          CHIICH_ASC_PRIVATE_KEY_P8_BASE64: ${{ secrets.CHIICH_ASC_PRIVATE_KEY_P8_BASE64 }}
+        run: >-
+          python3 scripts/testflight_release/read_status.py check
+          --version "$CHIICH_VERSION" --build "$CHIICH_BUILD"
+          --workflow-sha "$EXPECTED_WORKFLOW_SHA"
+          --token-helper "$RUNNER_TEMP/chiich-apple-token"
+      - name: Record status and safe diagnostics even when readiness fails
+        if: always()
+        run: |
+          python3 - <<'PY'
+          import json, os
+          from pathlib import Path
+          path = Path('.build/testflight-status-readonly/receipt.json')
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as summary:
+              summary.write('## CHIICH read-only TestFlight status\n\n')
+              if path.exists():
+                  result = json.loads(path.read_text())
+                  for field in ('version', 'build', 'uploaded_source_sha', 'workflow_sha', 'accepted_upload_run_id', 'accepted_artifact_id', 'original_receipt_verified', 'upload_accepted', 'build_state', 'group_assigned', 'internal_build_state', 'ready_for_internal_testing', 'reason_code', 'endpoint_stage', 'http_status'):
+                      summary.write(f'- {field}: {result[field]}\n')
+              else:
+                  summary.write('Status receipt unavailable: a prerequisite failed before any Apple status check. Do not repeat the accepted upload.\n')
+          PY
+      - name: Preserve separate status receipt on success or failure
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-TestFlight-status-readonly
+          path: .build/testflight-status-readonly/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Remove the temporary status API key
+        if: always()
+        run: python3 src/element-x-ios/signing.py cleanup

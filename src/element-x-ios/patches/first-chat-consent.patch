@@ -1,0 +1,381 @@
+diff --git a/UnitTests/Sources/CHIICHReceiverAIServiceTests.swift b/UnitTests/Sources/CHIICHReceiverAIServiceTests.swift
+--- a/UnitTests/Sources/CHIICHReceiverAIServiceTests.swift
++++ b/UnitTests/Sources/CHIICHReceiverAIServiceTests.swift
+@@ -5,6 +5,50 @@
+ import Testing
+ 
+ final class CHIICHReceiverAIServiceTests {
++    @Test
++    func firstChatOffersConsentOnceWithoutProcessingOrChoosing() async throws {
++        let fixture = try Fixture()
++        fixture.gateway.consent = nil
++        let service = try fixture.makeService()
++        #expect(await service.prepareAutomaticConsentPrompt())
++        #expect(!(await service.prepareAutomaticConsentPrompt()))
++        #expect(service.consentDecision == .undecided && !service.enabled)
++        #expect(fixture.gateway.consentWrites.isEmpty && fixture.gateway.contexts.isEmpty)
++        #expect(fixture.audioLoads == 0)
++    }
++
++    @Test(arguments: [true, false])
++    func rememberedChoiceDoesNotPromptAgain(_ choice: Bool) async throws {
++        let fixture = try Fixture()
++        fixture.gateway.consent = choice
++        let service = try fixture.makeService()
++        #expect(!(await service.prepareAutomaticConsentPrompt()))
++        #expect(fixture.gateway.consentWrites.isEmpty)
++    }
++
++    @Test
++    func refusedFirstChatStaysOffAfterRestart() async throws {
++        let fixture = try Fixture()
++        fixture.gateway.consent = nil
++        let service = try fixture.makeService()
++        #expect(await service.prepareAutomaticConsentPrompt())
++        service.setConsent(false)
++        try await Self.waitUntil { fixture.gateway.consent == false }
++        service.invalidate()
++        let restored = try fixture.makeService()
++        #expect(!(await restored.prepareAutomaticConsentPrompt()))
++        #expect(!restored.enabled && fixture.gateway.contexts.isEmpty)
++    }
++
++    @Test
++    func failedConsentReadDoesNotPromptOrAuthorize() async throws {
++        let fixture = try Fixture()
++        fixture.gateway.failConsentRead = true
++        let service = try fixture.makeService()
++        #expect(!(await service.prepareAutomaticConsentPrompt()))
++        #expect(!service.enabled && fixture.gateway.consentWrites.isEmpty)
++    }
++
+     @Test
+     func legacyEnabledCannotDiscloseTextOrVoiceBeforeAnExplicitDecision() async throws {
+         let fixture = try Fixture()
+@@ -622,6 +666,7 @@
+         var consent: Bool? = true
+         var consentVersion = 1
+         var failConsentWrite = false
++        var failConsentRead = false
+         var consentWrites: [Bool] = []
+         var contexts: [CHIICHReceiverAISourceContext] = []
+         var configured = true
+@@ -662,6 +707,7 @@
+         func request(_ request: CHIICHReceiverAIRequest, source: CHIICHReceiverAISourceContext?) async -> Result<Data, CHIICHReceiverAIError> {
+             switch request {
+             case .readConsent:
++                if failConsentRead { return .failure(.unavailable) }
+                 guard let consent else { return .failure(.accountDataMissing) }
+                 return .success(Self.json(["version": 1, "enabled": consent]))
+             case .writeConsent(_, let enabled):
+diff --git a/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIStrings.swift b/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIStrings.swift
+--- a/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIStrings.swift
++++ b/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIStrings.swift
+@@ -2,6 +2,20 @@
+ 
+ // These released brand strings use the native locale fallback, including RU and ZH.
+ nonisolated extension L10n {
++    static var screenChiichAiConsentNo: String { tr("Untranslated", "screen_chiich_ai_consent_no") }
++    static var screenChiichAiConsentYes: String { tr("Untranslated", "screen_chiich_ai_consent_yes") }
++    static var screenChiichAiConsentSummary: String {
++        tr("Untranslated", "screen_chiich_ai_consent_summary")
++    }
++
++    static var screenChiichAiConsentOptional: String {
++        tr("Untranslated", "screen_chiich_ai_consent_optional")
++    }
++
++    static var screenChiichAiConsentDetails: String {
++        tr("Untranslated", "screen_chiich_ai_consent_details")
++    }
++
+     static var screenChiichReceiverAiTitle: String {
+         tr("Untranslated", "screen_chiich_receiver_ai_title")
+     }
+diff --git a/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIService.swift b/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIService.swift
+--- a/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIService.swift
++++ b/ElementX/Sources/Services/CHIICHReceiverAI/CHIICHReceiverAIService.swift
+@@ -108,6 +108,19 @@
+                                                              }))
+     }
+     
++    // One presentation per session; a recorded grant/refusal is shared across devices.
++    // Opening a screen never authorizes processing or writes a choice.
++    private var didPresentAutomaticConsent = false
++
++    func prepareAutomaticConsentPrompt() async -> Bool {
++        guard sessionIsCurrent(), !Task.isCancelled, !didPresentAutomaticConsent else { return false }
++        await consent.refresh()
++        guard sessionIsCurrent(), !Task.isCancelled, !didPresentAutomaticConsent,
++              !consent.syncFailed, consent.decision == .undecided else { return false }
++        didPresentAutomaticConsent = true
++        return true
++    }
++
+     func connectIfNeeded() async {
+         guard availability == .idle else { return }
+         await refreshConnection()
+diff --git a/ElementX/Sources/Screens/Timeline/View/CHIICHReceiverAIControl.swift b/ElementX/Sources/Screens/Timeline/View/CHIICHReceiverAIControl.swift
+--- a/ElementX/Sources/Screens/Timeline/View/CHIICHReceiverAIControl.swift
++++ b/ElementX/Sources/Screens/Timeline/View/CHIICHReceiverAIControl.swift
+@@ -11,11 +11,12 @@
+     }
+ 
+     @State private var activeSheet: Sheet?
++    @State private var showingConsent = false
+     
+     var body: some View {
+         Menu {
+             if let service {
+-                Button(L10n.screenChiichAiConsentManage) { activeSheet = .consent }
++                Button(L10n.screenChiichAiConsentManage) { showingConsent = true }
+                 if service.consentDecision == .granted {
+                     Button {
+                         activeSheet = .language
+@@ -37,7 +38,16 @@
+         .accessibilityLabel(L10n.screenChiichReceiverAiTitle)
+         .accessibilityValue(statusLabel)
+         .accessibilityIdentifier("chiich.receiverAI.control")
+-        .task { await service?.connectIfNeeded() }
++        .task {
++            guard let service else { return }
++            if await service.prepareAutomaticConsentPrompt(), !Task.isCancelled, activeSheet == nil, !showingConsent {
++                showingConsent = true
++            }
++            await service.connectIfNeeded()
++        }
++        .fullScreenCover(isPresented: $showingConsent) {
++            if let service { CHIICHReceiverAIConsentScreen(service: service) }
++        }
+         .sheet(item: $activeSheet) { sheet in
+             if let service {
+                 switch sheet {
+@@ -70,63 +80,144 @@
+ struct CHIICHReceiverAIConsentScreen: View {
+     let service: CHIICHReceiverAIService
+     @Environment(\.dismiss) private var dismiss
+-
+-    var body: some View {
+-        ElementNavigationStack {
++    @State private var showingDetails = false
++
++    var body: some View {
++        ZStack {
++            Color.black.opacity(0.24).ignoresSafeArea()
+             ScrollView {
+-                VStack(alignment: .leading, spacing: 16) {
+-                    Text(L10n.screenChiichAiConsentTransfer)
+-                    Text(L10n.screenChiichAiConsentPeer)
+-                    Text(L10n.screenChiichAiConsentControl)
+-                    Link(L10n.commonPrivacyPolicy, destination: AppSettings.chiichPrivacyURL)
+-                        .foregroundStyle(CHIICHTheme.accent)
+-                        .accessibilityIdentifier("chiich.receiverAI.privacy")
+-
++                VStack(spacing: 24) {
++                    CHIICHConsentBrandMark()
++                        .frame(width: 68, height: 52)
++                        .accessibilityHidden(true)
++                    Text(L10n.screenChiichAiConsentSummary)
++                        .font(.title3.weight(.semibold))
++                        .multilineTextAlignment(.center)
++                        .fixedSize(horizontal: false, vertical: true)
+                     if service.preferenceSyncFailed {
+                         Text(L10n.screenChiichAiConsentSyncFailure)
++                            .font(.callout)
+                         Button(L10n.actionRetry) {
+                             Task { await service.refreshConnection() }
+                         }
+-                        .buttonStyle(.compound(.secondary))
+-                    }
+-
++                    }
+                     if service.consentDecision == .granted {
+-                        Button(L10n.screenChiichAiConsentDisable) {
+-                            service.setConsent(false)
+-                            dismiss()
++                        choice(L10n.screenChiichAiConsentDisable, consent: false,
++                               color: Color(red: 0.03, green: 0.49, blue: 0.94), identifier: "chiich.receiverAI.revoke")
++                    } else {
++                        ViewThatFits(in: .horizontal) {
++                            HStack(spacing: 10) { choices }
++                            VStack(spacing: 10) { choices }
+                         }
+-                        .buttonStyle(.compound(.secondary))
+-                        .accessibilityIdentifier("chiich.receiverAI.revoke")
+-                    } else {
+-                        Button(L10n.screenChiichAiConsentEnable) {
+-                            service.setConsent(true)
+-                            dismiss()
++                    }
++                    Button { showingDetails = true } label: {
++                        Text(L10n.screenChiichAiConsentDetails).underline()
++                            .font(.body)
++                            .frame(minHeight: 44)
++                    }
++                    .foregroundStyle(CHIICHTheme.accent)
++                    .accessibilityIdentifier("chiich.receiverAI.details")
++                    if service.consentDecision == .granted {
++                        Button(L10n.actionClose) { dismiss() }
++                    }
++                }
++                .foregroundStyle(CHIICHTheme.ink)
++                .padding(24)
++                .frame(maxWidth: 440)
++                .background(CHIICHTheme.paper, in: RoundedRectangle(cornerRadius: 28))
++                .padding(24)
++                .frame(maxWidth: .infinity)
++            }
++            .fixedSize(horizontal: false, vertical: true)
++            .defaultScrollAnchor(.center)
++        }
++        .presentationBackground(.clear)
++        .sheet(isPresented: $showingDetails) {
++            ElementNavigationStack {
++                CHIICHReceiverAIConsentDetails()
++                    .toolbar {
++                        ToolbarItem(placement: .cancellationAction) {
++                            Button(L10n.actionClose) { showingDetails = false }
+                         }
+-                        .buttonStyle(.compound(.primary))
+-                        .accessibilityIdentifier("chiich.receiverAI.grant")
+-
+-                        Button(L10n.screenChiichAiConsentDecline) {
+-                            service.setConsent(false)
+-                            dismiss()
+-                        }
+-                        .buttonStyle(.compound(.secondary))
+-                        .accessibilityIdentifier("chiich.receiverAI.decline")
+-                    }
+-                }
+-                .font(.compound.bodyMD)
+-                .foregroundStyle(.compound.textPrimary)
+-                .frame(maxWidth: 520, alignment: .leading)
+-                .padding()
+-                .frame(maxWidth: .infinity)
+-            }
+-            .navigationTitle(L10n.screenChiichReceiverAiTitle)
+-            .navigationBarTitleDisplayMode(.inline)
+-            .toolbar {
+-                ToolbarItem(placement: .cancellationAction) {
+-                    Button(L10n.actionClose) { dismiss() }
+-                }
+-            }
+-        }
++                    }
++            }
++        }
++    }
++
++    @ViewBuilder private var choices: some View {
++        choice(L10n.screenChiichAiConsentNo, consent: false,
++               color: Color(red: 0.03, green: 0.49, blue: 0.94), identifier: "chiich.receiverAI.decline")
++        choice(L10n.screenChiichAiConsentYes, consent: true,
++               color: Color(red: 0.0, green: 0.48, blue: 0.20), identifier: "chiich.receiverAI.grant")
++    }
++
++    private func choice(_ title: String, consent: Bool, color: Color, identifier: String) -> some View {
++        Button {
++            service.setConsent(consent)
++            dismiss()
++        } label: {
++            Text(title)
++                .font(.headline)
++                .fixedSize(horizontal: true, vertical: false)
++                .frame(maxWidth: .infinity, minHeight: 52)
++                .padding(.horizontal, 12)
++                .foregroundStyle(.white)
++                .background(color, in: RoundedRectangle(cornerRadius: 16))
++        }
++        .buttonStyle(.plain)
++        .accessibilityIdentifier(identifier)
++    }
++}
++
++// Owner's approved mark: concave blue sparkle between two navy capsules.
++private struct CHIICHConsentBrandMark: View {
++    var body: some View {
++        GeometryReader { geometry in
++            let width = geometry.size.width
++            let height = geometry.size.height
++            HStack(spacing: 4) {
++                Capsule().fill(Color(red: 0.04, green: 0.07, blue: 0.28)).frame(width: width * 0.11)
++                CHIICHConsentSparkle().fill(Color(red: 0.02, green: 0.52, blue: 1))
++                Capsule().fill(Color(red: 0.04, green: 0.07, blue: 0.28)).frame(width: width * 0.11)
++            }
++            .frame(width: width, height: height)
++        }
++    }
++}
++
++private struct CHIICHConsentSparkle: Shape {
++    nonisolated func path(in rect: CGRect) -> Path {
++        let x = rect.midX, y = rect.midY
++        var path = Path()
++        path.move(to: CGPoint(x: x, y: rect.minY))
++        path.addQuadCurve(to: CGPoint(x: rect.maxX, y: y), control: CGPoint(x: x, y: y))
++        path.addQuadCurve(to: CGPoint(x: x, y: rect.maxY), control: CGPoint(x: x, y: y))
++        path.addQuadCurve(to: CGPoint(x: rect.minX, y: y), control: CGPoint(x: x, y: y))
++        path.addQuadCurve(to: CGPoint(x: x, y: rect.minY), control: CGPoint(x: x, y: y))
++        path.closeSubpath()
++        return path
++    }
++}
++
++// Full disclosure stays available inside the app before either choice.
++// No new browser transition or provider request is introduced.
++struct CHIICHReceiverAIConsentDetails: View {
++    var body: some View {
++        ScrollView {
++            VStack(alignment: .leading, spacing: 16) {
++                Text(L10n.screenChiichAiConsentTransfer)
++                Text(L10n.screenChiichAiConsentPeer)
++                Text(L10n.screenChiichAiConsentControl)
++                Link(L10n.commonPrivacyPolicy, destination: AppSettings.chiichPrivacyURL)
++                    .foregroundStyle(CHIICHTheme.accent)
++                    .accessibilityIdentifier("chiich.receiverAI.privacy")
++            }
++            .font(.compound.bodyMD)
++            .foregroundStyle(.compound.textPrimary)
++            .padding()
++        }
++        .navigationTitle(L10n.screenChiichAiConsentDetails)
++        .navigationBarTitleDisplayMode(.inline)
+     }
+ }
+ 
+diff --git a/ElementX/Resources/Localizations/en.lproj/Untranslated.strings b/ElementX/Resources/Localizations/en.lproj/Untranslated.strings
+--- a/ElementX/Resources/Localizations/en.lproj/Untranslated.strings
++++ b/ElementX/Resources/Localizations/en.lproj/Untranslated.strings
+@@ -47,3 +47,8 @@
+ "screen_chiich_ai_consent_decline" = "Continue without AI";
+ "screen_chiich_ai_consent_disable" = "Turn off AI and withdraw permission";
+ "screen_chiich_ai_consent_sync_failure" = "Your choice hasn’t synced with the server. Retry when you’re online to apply it for other participants.";
++"screen_chiich_ai_consent_summary" = "Message translation, rewriting, transcription and AI planner support require sending data to an external AI processor.";
++"screen_chiich_ai_consent_optional" = "You can chat without AI. Change your choice in Settings at any time.";
++"screen_chiich_ai_consent_details" = "About the technology";
++"screen_chiich_ai_consent_no" = "Without AI";
++"screen_chiich_ai_consent_yes" = "I agree";
+diff --git a/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings b/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings
+--- a/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings
++++ b/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings
+@@ -38,3 +38,8 @@
+ "screen_chiich_ai_consent_decline" = "Продолжить без ИИ";
+ "screen_chiich_ai_consent_disable" = "Отключить ИИ и отозвать согласие";
+ "screen_chiich_ai_consent_sync_failure" = "Не удалось передать ваш выбор на сервер. Подключитесь к сети и повторите, чтобы изменение вступило в силу для собеседников.";
++"screen_chiich_ai_consent_summary" = "Перевод сообщений, рерайт, транскрибация и поддержка AI планера требуют передачи данных внешнему обработчику ИИ";
++"screen_chiich_ai_consent_optional" = "Без ИИ чат продолжит работать. Выбор можно изменить в настройках.";
++"screen_chiich_ai_consent_details" = "Подробнее о технологии";
++"screen_chiich_ai_consent_no" = "Без ИИ";
++"screen_chiich_ai_consent_yes" = "Согласен";
+diff --git a/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings b/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings
+--- a/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings
++++ b/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings
+@@ -38,3 +38,8 @@
+ "screen_chiich_ai_consent_decline" = "不启用 AI，继续聊天";
+ "screen_chiich_ai_consent_disable" = "关闭 AI 并撤回授权";
+ "screen_chiich_ai_consent_sync_failure" = "您的选择尚未同步到服务器。请联网后重试，以便让更改对其他参与者生效。";
++"screen_chiich_ai_consent_summary" = "消息翻译、改写、语音转写和 AI 计划助手需要将数据发送给外部 AI 处理服务。";
++"screen_chiich_ai_consent_optional" = "不启用 AI 也能正常聊天。您可以随时在设置中更改选择。";
++"screen_chiich_ai_consent_details" = "技术详情";
++"screen_chiich_ai_consent_no" = "不使用 AI";
++"screen_chiich_ai_consent_yes" = "同意";

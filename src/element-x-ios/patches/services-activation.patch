@@ -1,0 +1,264 @@
+diff --git a/ElementX/Sources/Application/Settings/AccountSettings.swift b/ElementX/Sources/Application/Settings/AccountSettings.swift
+index e96f2d4..29e71e4 100644
+--- a/ElementX/Sources/Application/Settings/AccountSettings.swift
++++ b/ElementX/Sources/Application/Settings/AccountSettings.swift
+@@ -42,7 +42,7 @@ final nonisolated class AccountSettings: @unchecked Sendable {
+     var showAllRoomListActivity: Bool
+     
+     /// Whether this account's notifications are on. When off, its pusher is deleted from the homeserver.
+-    @UserPreference(defaultValue: false)
++    @UserPreference(defaultValue: InfoPlistReader.main.chiichPushGatewayBaseURL != nil)
+     var enableNotifications: Bool
+     
+     /// The tone played when the user hasn't selected one, which the homeserver can configure remotely.
+diff --git a/ElementX/Sources/Application/Settings/AppSettings.swift b/ElementX/Sources/Application/Settings/AppSettings.swift
+index 60f67f7..c652ed3 100644
+--- a/ElementX/Sources/Application/Settings/AppSettings.swift
++++ b/ElementX/Sources/Application/Settings/AppSettings.swift
+@@ -222,8 +222,8 @@ final nonisolated class AppSettings: @unchecked Sendable {
+         #endif
+     }
+     
+-    // Push remains disabled in this unsigned trial until CHIICH has an APNs gateway.
+-    private(set) var pushGatewayBaseURL: URL = "https://notifications.invalid"
++    // Validated signed service metadata is absent in the default trial.
++    private(set) var pushGatewayBaseURL: URL = InfoPlistReader.main.chiichPushGatewayBaseURL ?? "https://notifications.invalid"
+     var pushGatewayNotifyEndpoint: URL {
+         pushGatewayBaseURL.appending(path: "_matrix/push/v1/notify")
+     }
+@@ -298,7 +298,7 @@ final nonisolated class AppSettings: @unchecked Sendable {
+     var hasSignedInBefore: Bool
+     
+     // No push permission prompt before the trial has its own configured push service.
+-    @UserPreference(defaultValue: true)
++    @UserPreference(defaultValue: InfoPlistReader.main.chiichPushGatewayBaseURL == nil)
+     var hasRunNotificationPermissionsOnboarding: Bool
+     
+     @UserPreference(defaultValue: false)
+diff --git a/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift b/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift
+index 84ff2a4..28da6f6 100644
+--- a/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift
++++ b/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift
+@@ -150,7 +150,7 @@ class OnboardingFlowCoordinator: FlowCoordinatorProtocol {
+     }
+     
+     private var requiresNotificationsSetup: Bool {
+-        !userSettings.app.hasRunNotificationPermissionsOnboarding
++        !userSettings.app.hasRunNotificationPermissionsOnboarding && userSettings.account.enableNotifications
+     }
+     
+     private func configureStateMachine() {
+diff --git a/ElementX/Sources/Other/InfoPlistReader.swift b/ElementX/Sources/Other/InfoPlistReader.swift
+index b7df0e6..a903149 100644
+--- a/ElementX/Sources/Other/InfoPlistReader.swift
++++ b/ElementX/Sources/Other/InfoPlistReader.swift
+@@ -6,6 +6,7 @@
+ // Please see LICENSE files in the repository root for full details.
+ //
+ 
++import CoreFoundation
+ import Foundation
+ 
+ nonisolated struct InfoPlistReader {
+@@ -142,6 +143,41 @@ nonisolated struct InfoPlistReader {
+         return urlString.flatMap { URL(string: $0) }
+     }
+     
++    // MARK: - CHIICH Native Services
++
++    /// Absent or malformed metadata preserves the push-disabled trial defaults.
++    /// The signing pipeline separately validates ownership and signed entitlements.
++    var chiichPushGatewayBaseURL: URL? {
++        let services: [String: Any]? = infoPlistValue(forKey: "CHIICHNativeServices")
++        return Self.chiichPushGatewayBaseURL(from: services)
++    }
++
++    static func chiichPushGatewayBaseURL(from services: [String: Any]?) -> URL? {
++        let keys: Set<String> = ["schema_version", "mode", "team_id", "bundle_id", "pusher_app_id",
++                                 "apns_environment", "gateway_base_url", "render_service_id",
++                                 "gateway_ownership_verified", "universal_links"]
++        guard let services,
++              Set(services.keys) == keys,
++              let schema = services["schema_version"] as? NSNumber,
++              CFGetTypeID(schema) != CFBooleanGetTypeID(), schema == 1,
++              services["mode"] as? String == "services-enabled",
++              services["team_id"] as? String == "RM8GR3A69Q",
++              services["bundle_id"] as? String == "one.chiich.app",
++              services["pusher_app_id"] as? String == "one.chiich.app.ios.prod",
++              services["apns_environment"] as? String == "production",
++              let ownership = services["gateway_ownership_verified"] as? NSNumber,
++              CFGetTypeID(ownership) == CFBooleanGetTypeID(), ownership.boolValue,
++              let universalLinks = services["universal_links"] as? NSNumber,
++              CFGetTypeID(universalLinks) == CFBooleanGetTypeID(),
++              let serviceID = services["render_service_id"] as? String,
++              serviceID.range(of: #"srv-[a-z0-9]{20,32}"#, options: .regularExpression) == serviceID.startIndex..<serviceID.endIndex,
++              let origin = services["gateway_base_url"] as? String,
++              origin.range(of: #"https://[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.onrender\.com"#, options: .regularExpression) == origin.startIndex..<origin.endIndex else {
++            return nil
++        }
++        return URL(string: origin)
++    }
++
+     // MARK: - Private
+     
+     @_disfavoredOverload // Make sure optional types default to the optional version below.
+diff --git a/UnitTests/Sources/CHIICHNativeServicesTests.swift b/UnitTests/Sources/CHIICHNativeServicesTests.swift
+new file mode 100644
+index 0000000..af63433
+--- /dev/null
++++ b/UnitTests/Sources/CHIICHNativeServicesTests.swift
+@@ -0,0 +1,129 @@
++//
++// Copyright 2026 CHIICH contributors.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++// Please see LICENSE files in the repository root for full details.
++//
++
++import Combine
++@testable import ElementX
++import Foundation
++import Macros
++import Testing
++
++@Suite(.timeLimit(.minutes(1)))
++struct CHIICHNativeServicesTests {
++    // Synthetic metadata only. No network requests or APNs credentials are used.
++    private var services: [String: Any] {
++        ["schema_version": 1,
++         "mode": "services-enabled",
++         "team_id": "RM8GR3A69Q",
++         "bundle_id": "one.chiich.app",
++         "pusher_app_id": "one.chiich.app.ios.prod",
++         "apns_environment": "production",
++         "gateway_base_url": "https://synthetic-push.onrender.com",
++         "render_service_id": "srv-00000000000000000000",
++         "gateway_ownership_verified": true,
++         "universal_links": false]
++    }
++
++    @Test
++    func missingMetadataKeepsTheTrialDefaults() {
++        #expect(InfoPlistReader.chiichPushGatewayBaseURL(from: nil) == nil)
++        let preferences = ServicePreferenceFixture<TrialServiceDefaults>(store: VolatileUserDefaults())
++        #expect(!preferences.enableNotifications)
++        #expect(preferences.hasRunNotificationPermissionsOnboarding)
++    }
++
++    @Test
++    func unconfiguredApplicationUsesTheExistingNativeTrialPreferences() {
++        let settings = AppSettings.volatile()
++        #expect(settings.pushGatewayBaseURL.absoluteString == "https://notifications.invalid")
++        #expect(settings.hasRunNotificationPermissionsOnboarding)
++        #expect(!settings.userSettings(for: "@synthetic:chat.chiich.one").account.enableNotifications)
++    }
++
++    @Test
++    func untouchedTrialPreferencesUseNativeDefaultsWhenServicesBecomeAvailable() throws {
++        let store = VolatileUserDefaults()
++        let trial = ServicePreferenceFixture<TrialServiceDefaults>(store: store)
++        #expect(!trial.enableNotifications)
++        #expect(trial.hasRunNotificationPermissionsOnboarding)
++        let gateway = try #require(InfoPlistReader.chiichPushGatewayBaseURL(from: services))
++        let enabled = ServicePreferenceFixture<EnabledServiceDefaults>(store: store)
++        #expect(enabled.enableNotifications)
++        #expect(!enabled.hasRunNotificationPermissionsOnboarding)
++        #expect(gateway.absoluteString == "https://synthetic-push.onrender.com")
++    }
++
++    @Test
++    func explicitOptOutAndCompletedOnboardingSurviveServiceActivation() throws {
++        let store = VolatileUserDefaults()
++        let trial = ServicePreferenceFixture<TrialServiceDefaults>(store: store)
++        trial.enableNotifications = false
++        trial.hasRunNotificationPermissionsOnboarding = true
++        _ = try #require(InfoPlistReader.chiichPushGatewayBaseURL(from: services))
++        let enabled = ServicePreferenceFixture<EnabledServiceDefaults>(store: store)
++        #expect(!enabled.enableNotifications)
++        #expect(enabled.hasRunNotificationPermissionsOnboarding)
++    }
++
++    @Test(arguments: ["https://notifications.invalid", "http://synthetic-push.onrender.com",
++                      "https://synthetic-push.onrender.com/", "https://synthetic-push.onrender.com/_matrix/push/v1/notify",
++                      "https://synthetic-push.onrender.com?x=1", "https://synthetic-push.onrender.com#fragment",
++                      "https://user@synthetic-push.onrender.com", "https://synthetic-push.onrender.com:443",
++                      "https://synthetic-push.onrender.com.evil.invalid", "https://SYNTHETIC-push.onrender.com",
++                      "https://synthetic-push.onrender.com\n"])
++    func malformedOrUnreviewedGatewayFailsClosed(origin: String) {
++        var candidate = services
++        candidate["gateway_base_url"] = origin
++        #expect(InfoPlistReader.chiichPushGatewayBaseURL(from: candidate) == nil)
++    }
++
++    @Test
++    func wrongIdentityOrIncompleteReviewFailsClosed() {
++        let mutations: [(String, Any)] = [("schema_version", true), ("mode", "disabled-trial"),
++                                         ("team_id", "OTHERTEAM00"), ("bundle_id", "io.element.elementx"),
++                                         ("pusher_app_id", "one.chiich.app.ios.dev"), ("apns_environment", "development"),
++                                         ("render_service_id", ""), ("gateway_ownership_verified", false),
++                                         ("gateway_ownership_verified", 1), ("universal_links", "false"),
++                                         ("unexpected_secret_field", "synthetic")]
++        for (key, value) in mutations {
++            var candidate = services
++            candidate[key] = value
++            #expect(InfoPlistReader.chiichPushGatewayBaseURL(from: candidate) == nil)
++        }
++        for key in services.keys {
++            var candidate = services
++            candidate.removeValue(forKey: key)
++            #expect(InfoPlistReader.chiichPushGatewayBaseURL(from: candidate) == nil)
++        }
++    }
++}
++
++/// Use the real native macro and store to exercise an app update without changing
++/// Bundle.main or persisting a synthetic gateway in any application configuration.
++private protocol ServiceDefaults {
++    static var gateway: URL? { get }
++}
++
++private enum TrialServiceDefaults: ServiceDefaults {
++    static let gateway: URL? = nil
++}
++
++private enum EnabledServiceDefaults: ServiceDefaults {
++    static let gateway = URL(string: "https://synthetic-push.onrender.com")
++}
++
++private final class ServicePreferenceFixture<Defaults: ServiceDefaults> {
++    private let store: UserDefaultsProtocol
++
++    @UserPreference(defaultValue: Defaults.gateway != nil)
++    var enableNotifications: Bool
++
++    @UserPreference(defaultValue: Defaults.gateway == nil)
++    var hasRunNotificationPermissionsOnboarding: Bool
++
++    init(store: UserDefaultsProtocol) {
++        self.store = store
++    }
++}
+diff --git a/UnitTests/Sources/CHIICHOnboardingTests.swift b/UnitTests/Sources/CHIICHOnboardingTests.swift
+index 8cf292a..a91a133 100644
+--- a/UnitTests/Sources/CHIICHOnboardingTests.swift
++++ b/UnitTests/Sources/CHIICHOnboardingTests.swift
+@@ -60,9 +60,20 @@ struct CHIICHOnboardingTests {
+     @Test
+     func verifiedDeviceStillHonoursPendingNotificationPermission() {
+         let fixture = OnboardingFixture(isNewLogin: false, verificationState: .verified)
++        fixture.userSession.userSettings.account.enableNotifications = true
+         fixture.userSession.userSettings.app.hasRunNotificationPermissionsOnboarding = false
+         #expect(fixture.coordinator.shouldStart)
+     }
++
++    @Test
++    func restoredAccountWithExplicitOptOutDoesNotGetAnInactiveNotificationPrompt() {
++        let fixture = OnboardingFixture(isNewLogin: false, verificationState: .verified)
++        fixture.userSession.userSettings.account.enableNotifications = false
++        fixture.userSession.userSettings.app.hasRunNotificationPermissionsOnboarding = false
++        #expect(!fixture.coordinator.shouldStart)
++        #expect(!fixture.userSession.userSettings.account.enableNotifications)
++        #expect(!fixture.userSession.userSettings.app.hasRunNotificationPermissionsOnboarding)
++    }
+     
+     @Test
+     func verifiedDeviceStillHonoursPendingAnalyticsConsent() {

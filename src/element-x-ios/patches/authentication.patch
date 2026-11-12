@@ -1,0 +1,1566 @@
+diff --git a/ElementX/Resources/Localizations/en.lproj/Localizable.strings b/ElementX/Resources/Localizations/en.lproj/Localizable.strings
+--- a/ElementX/Resources/Localizations/en.lproj/Localizable.strings
++++ b/ElementX/Resources/Localizations/en.lproj/Localizable.strings
+@@ -1803,3 +1803,10 @@
+ "troubleshoot_notifications_test_unified_push_title" = "Check UnifiedPush";
+ "vulkan_not_supported_dialog_content_android" = "Your device is too old, a device with Android 8 or newer is required.";
+ "vulkan_not_supported_dialog_title_android" = "Rendering maps is not supported";
++
++// CHIICH legacy Matrix SSO.
++"chiich_sso_apple" = "Continue with Apple";
++"chiich_sso_google" = "Continue with Google";
++"chiich_sso_first_login" = "Your first sign-in creates your CHIICH account.";
++"chiich_password_login" = "Sign in with password";
++"chiich_hide_password_login" = "Hide password sign-in";
+diff --git a/ElementX/Resources/Localizations/ru.lproj/Localizable.strings b/ElementX/Resources/Localizations/ru.lproj/Localizable.strings
+--- a/ElementX/Resources/Localizations/ru.lproj/Localizable.strings
++++ b/ElementX/Resources/Localizations/ru.lproj/Localizable.strings
+@@ -1803,3 +1803,10 @@
+ "troubleshoot_notifications_test_unified_push_title" = "Проверка UnifiedPush";
+ "vulkan_not_supported_dialog_content_android" = "Ваше устройство слишком старое, требуется устройство с Android 8 или более новой версией.";
+ "vulkan_not_supported_dialog_title_android" = "Отображение карт не поддерживается";
++
++// CHIICH legacy Matrix SSO.
++"chiich_sso_apple" = "Продолжить с Apple";
++"chiich_sso_google" = "Продолжить с Google";
++"chiich_sso_first_login" = "Первый вход создаст ваш аккаунт CHIICH.";
++"chiich_password_login" = "Войти с паролем";
++"chiich_hide_password_login" = "Скрыть вход с паролем";
+diff --git a/ElementX/Sources/Mocks/SDK/ClientSDKMock.swift b/ElementX/Sources/Mocks/SDK/ClientSDKMock.swift
+--- a/ElementX/Sources/Mocks/SDK/ClientSDKMock.swift
++++ b/ElementX/Sources/Mocks/SDK/ClientSDKMock.swift
+@@ -97,6 +97,7 @@
+         
+         slidingSyncVersionReturnValue = configuration.slidingSyncVersion
+         supportsPasswordLoginReturnValue = configuration.supportsPasswordLogin
++        supportsSsoLoginReturnValue = false
+         supportsOauthLoginReturnValue = configuration.oAuthLoginURL != nil
+         supportedOauthPromptsReturnValue = switch (configuration.oAuthLoginURL, configuration.supportsOAuthCreatePrompt) {
+         case (.none, _): []
+diff --git a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginHomeserver.swift b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginHomeserver.swift
+--- a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginHomeserver.swift
++++ b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginHomeserver.swift
+@@ -14,6 +14,8 @@
+     let accountProvider: AccountProvider
+     /// The types login supported by the homeserver.
+     var loginMode: LoginMode
++    /// Whether the discovered homeserver also accepts existing-account passwords.
++    var supportsPasswordLogin = false
+ }
+ 
+ // MARK: - Mocks
+@@ -21,12 +23,12 @@
+ extension LoginHomeserver {
+     /// A mock homeserver that is configured just like matrix.org.
+     static var mockMatrixDotOrg: LoginHomeserver {
+-        LoginHomeserver(accountProvider: .generic("matrix.org"), loginMode: .oAuth(supportsCreatePrompt: true))
++        LoginHomeserver(accountProvider: .generic("matrix.org"), loginMode: .oAuth(supportsCreatePrompt: true), supportsPasswordLogin: true)
+     }
+     
+     /// A mock homeserver that supports login and registration via a password but has no OAuth support.
+     static var mockBasicServer: LoginHomeserver {
+-        LoginHomeserver(accountProvider: .generic("example.com"), loginMode: .password)
++        LoginHomeserver(accountProvider: .generic("example.com"), loginMode: .password, supportsPasswordLogin: true)
+     }
+     
+     /// A mock homeserver that supports only supports authentication via OAuth.
+diff --git a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginMode.swift b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginMode.swift
+--- a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginMode.swift
++++ b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginMode.swift
+@@ -16,6 +16,8 @@
+     case oAuth(supportsCreatePrompt: Bool)
+     /// The homeserver supports login with a password.
+     case password
++    /// Legacy Matrix SSO, using the homeserver's identity providers.
++    case sso
+     /// The homeserver only allows login with unsupported mechanisms. Use fallback instead.
+     case unsupported
+     
+diff --git a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenCoordinator.swift b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenCoordinator.swift
+--- a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenCoordinator.swift
++++ b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenCoordinator.swift
+@@ -28,6 +28,9 @@
+ /// Note: This code was brought over from Riot, we should move the authentication service logic into the view model.
+ final class LoginScreenCoordinator: CoordinatorProtocol {
+     private var viewModel: LoginScreenViewModelProtocol
++    private let parameters: LoginScreenCoordinatorParameters
++    private var ssoPresenter: SSOAuthenticationPresenter?
++    private var ssoTask: Task<Void, Never>?
+     
+     private let actionsSubject: PassthroughSubject<LoginScreenCoordinatorAction, Never> = .init()
+     private var cancellables = Set<AnyCancellable>()
+@@ -39,6 +42,7 @@
+     // MARK: - Setup
+     
+     init(parameters: LoginScreenCoordinatorParameters) {
++        self.parameters = parameters
+         viewModel = LoginScreenViewModel(authenticationService: parameters.authenticationService,
+                                          loginHint: parameters.loginHint,
+                                          userIndicatorController: parameters.userIndicatorController,
+@@ -53,6 +57,8 @@
+                 guard let self else { return }
+                 
+                 switch action {
++                case .continueWithSSO(let provider, let window):
++                    continueWithSSO(provider, window: window)
+                 case .configuredForOAuth:
+                     actionsSubject.send(.configuredForOAuth)
+                 case .signedIn(let userSession):
+@@ -63,9 +69,31 @@
+     }
+     
+     func stop() {
++        if ssoPresenter?.cancel() != false { ssoTask?.cancel() }
+         viewModel.stopLoading()
+     }
+     
++    private func continueWithSSO(_ provider: SSOIdentityProvider, window: UIWindow) {
++        guard ssoTask == nil, let service = parameters.authenticationService as? SSOAuthenticationServiceProtocol else {
++            viewModel.stopLoading()
++            return
++        }
++        let presenter = SSOAuthenticationPresenter(service: service, anchor: window, indicators: parameters.userIndicatorController)
++        ssoPresenter = presenter
++        ssoTask = Task { [weak self] in
++            guard let self else { return }
++            let result = await presenter.authenticate(provider: provider)
++            ssoPresenter = nil
++            ssoTask = nil
++            viewModel.stopLoading()
++            switch result {
++            case .success(let userSession): actionsSubject.send(.signedIn(userSession))
++            case .failure(.ssoError(.cancelled)): break
++            case .failure: viewModel.context.alertInfo = AlertInfo(id: .unknown)
++            }
++        }
++    }
++
+     func toPresentable() -> AnyView {
+         AnyView(LoginScreen(context: viewModel.context))
+     }
+diff --git a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenModels.swift b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenModels.swift
+--- a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenModels.swift
++++ b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenModels.swift
+@@ -6,13 +6,14 @@
+ // Please see LICENSE files in the repository root for full details.
+ //
+ 
+-import Foundation
++import SwiftUI
+ 
+ enum LoginScreenViewModelAction {
+     /// The homeserver was updated to one that supports OAuth.
+     case configuredForOAuth
+     /// Login was successful.
+     case signedIn(UserSessionProtocol)
++    case continueWithSSO(SSOIdentityProvider, UIWindow)
+     
+     var isConfiguredForOAuth: Bool {
+         switch self {
+@@ -27,12 +28,24 @@
+     var homeserver: LoginHomeserver
+     /// Whether a new homeserver is currently being loaded.
+     var isLoading = false
++    var window: UIWindow?
++    /// Password fallback signs in an existing account; it never registers one.
++    var allowsPasswordFallback = false
++    var isPasswordLoginExpanded = false
+     /// View state that can be bound to from SwiftUI.
+     var bindings = LoginScreenBindings()
+     
+     /// The types of login supported by the homeserver.
+     var loginMode: LoginMode {
+         homeserver.loginMode
++    }
++
++    var canShowPasswordFallback: Bool {
++        loginMode == .sso && homeserver.supportsPasswordLogin && allowsPasswordFallback
++    }
++
++    var isPasswordLoginVisible: Bool {
++        loginMode == .password || (canShowPasswordFallback && isPasswordLoginExpanded)
+     }
+     
+     /// `true` if the username and password are ready to be submitted.
+@@ -42,7 +55,7 @@
+     
+     /// `true` when valid credentials have been entered and a homeserver has been loaded.
+     var canSubmit: Bool {
+-        hasValidCredentials && !isLoading
++        isPasswordLoginVisible && hasValidCredentials && !isLoading
+     }
+ }
+ 
+@@ -56,6 +69,9 @@
+ }
+ 
+ enum LoginScreenViewAction {
++    case togglePasswordLogin
++    case updateWindow(UIWindow?)
++    case continueWithSSO(SSOIdentityProvider)
+     /// Parse the username to detect if a homeserver is included.
+     case parseUsername
+     /// Continue using the input username and password.
+diff --git a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenViewModel.swift b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenViewModel.swift
+--- a/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenViewModel.swift
++++ b/ElementX/Sources/Screens/Authentication/LoginScreen/LoginScreenViewModel.swift
+@@ -37,6 +37,7 @@
+         }
+         
+         let viewState = LoginScreenViewState(homeserver: authenticationService.homeserver.value,
++                                             allowsPasswordFallback: authenticationService.flow == .login,
+                                              bindings: LoginScreenBindings(username: username))
+         
+         super.init(initialViewState: viewState)
+@@ -49,9 +50,21 @@
+     
+     override func process(viewAction: LoginScreenViewAction) {
+         switch viewAction {
++        case .togglePasswordLogin:
++            guard !state.isLoading, state.canShowPasswordFallback else { return }
++            state.isPasswordLoginExpanded.toggle()
++            if !state.isPasswordLoginExpanded { state.bindings.password = "" }
++        case .updateWindow(let window):
++            guard state.window != window else { return }
++            Task { state.window = window }
++        case .continueWithSSO(let provider):
++            guard state.loginMode == .sso, !state.isLoading, let window = state.window else { return }
++            state.isLoading = true
++            actionsSubject.send(.continueWithSSO(provider, window))
+         case .parseUsername:
+             parseUsername()
+         case .next:
++            guard state.canSubmit else { return }
+             login()
+         }
+     }
+@@ -65,6 +78,8 @@
+     
+     /// Parses the specified username and looks up the homeserver when a Matrix ID is entered.
+     private func parseUsername() {
++        // A full Matrix ID must never move CHIICH's fixed account provider.
++        guard appSettings.allowOtherAccountProviders, !state.isLoading else { return }
+         let username = state.bindings.username
+         
+         guard let homeserverDomain = try? serverNameFromUserId(userId: username) else { return }
+@@ -87,6 +102,12 @@
+     
+     /// Requests the authentication coordinator to log in using the specified credentials.
+     private func login() {
++        if !appSettings.allowOtherAccountProviders,
++           let serverName = try? serverNameFromUserId(userId: state.bindings.username),
++           !appSettings.accountProviders.contains(serverName: serverName, orBaseURL: nil) {
++            handleError(.invalidCredentials)
++            return
++        }
+         MXLog.info("Starting login with password.")
+         startLoading(isInteractionBlocking: true)
+         
+@@ -108,13 +129,12 @@
+     private static let loadingIndicatorIdentifier = "\(LoginScreenCoordinatorAction.self)-Loading"
+     
+     private func startLoading(isInteractionBlocking: Bool) {
++        state.isLoading = true
+         if isInteractionBlocking {
+             userIndicatorController.submitIndicator(UserIndicator(id: Self.loadingIndicatorIdentifier,
+                                                                   type: .modal,
+                                                                   title: L10n.commonLoading,
+                                                                   persistent: true))
+-        } else {
+-            state.isLoading = true
+         }
+     }
+     
+diff --git a/ElementX/Sources/Screens/Authentication/LoginScreen/View/LoginScreen.swift b/ElementX/Sources/Screens/Authentication/LoginScreen/View/LoginScreen.swift
+--- a/ElementX/Sources/Screens/Authentication/LoginScreen/View/LoginScreen.swift
++++ b/ElementX/Sources/Screens/Authentication/LoginScreen/View/LoginScreen.swift
+@@ -25,8 +25,33 @@
+                     .padding(.bottom, 32)
+                 
+                 switch context.viewState.loginMode {
++                case .sso:
++                    VStack(spacing: 24) {
++                        SSOProviderButtons { context.send(viewAction: .continueWithSSO($0)) }
++                            .disabled(context.viewState.isLoading || context.viewState.window == nil)
++                        Text(NSLocalizedString("chiich_sso_first_login", comment: "SSO registration explanation"))
++                            .font(.compound.bodyMD)
++                            .foregroundColor(.compound.textSecondary)
++                            .multilineTextAlignment(.center)
++                        if context.viewState.canShowPasswordFallback {
++                            Button {
++                                context.send(viewAction: .togglePasswordLogin)
++                            } label: {
++                                Text(NSLocalizedString(context.viewState.isPasswordLoginExpanded ? "chiich_hide_password_login" : "chiich_password_login",
++                                                       comment: "Existing-account password fallback"))
++                            }
++                            .buttonStyle(.compound(.secondary))
++                            .disabled(context.viewState.isLoading)
++                            .accessibilityIdentifier("chiich.login.passwordFallback")
++                            if context.viewState.isPasswordLoginVisible {
++                                loginForm
++                                    .disabled(context.viewState.isLoading)
++                            }
++                        }
++                    }
+                 case .password:
+                     loginForm
++                        .disabled(context.viewState.isLoading)
+                 case .oAuth:
+                     // This should never be shown.
+                     ProgressView()
+@@ -42,6 +67,9 @@
+         .background(Color.compound.bgCanvasDefault.ignoresSafeArea())
+         .navigationBarTitleDisplayMode(.inline)
+         .alert(item: $context.alertInfo)
++        .introspect(.window, on: .supportedVersions) { window in
++            context.send(viewAction: .updateWindow(window))
++        }
+     }
+     
+     /// The header containing the title and icon.
+diff --git a/ElementX/Sources/Screens/Authentication/SSOAuthenticationPresenter.swift b/ElementX/Sources/Screens/Authentication/SSOAuthenticationPresenter.swift
+new file mode 100644
+--- /dev/null
++++ b/ElementX/Sources/Screens/Authentication/SSOAuthenticationPresenter.swift
+@@ -0,0 +1,122 @@
++//
++// Copyright 2026 CHIICH contributors.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++// Please see LICENSE files in the repository root for full details.
++//
++
++import AuthenticationServices
++
++/// Native browser presentation for the SDK's legacy SSO flow. No web-client session import.
++@MainActor
++final class SSOAuthenticationPresenter: NSObject, ASWebAuthenticationPresentationContextProviding {
++    private let service: SSOAuthenticationServiceProtocol
++    private let anchor: UIWindow
++    private let indicators: UserIndicatorControllerProtocol
++    private let loadingID = "CHIICH-SSO-" + UUID().uuidString
++    private var didStart = false
++    private var requestID: UUID?
++    private var isCancelled = false
++    private var activeRequest: Request?
++
++    private struct Request {
++        let id: UUID
++        let session: ASWebAuthenticationSession
++        let continuation: CheckedContinuation<Result<URL, SSOError>, Never>
++    }
++
++    init(service: SSOAuthenticationServiceProtocol, anchor: UIWindow, indicators: UserIndicatorControllerProtocol) {
++        self.service = service
++        self.anchor = anchor
++        self.indicators = indicators
++        super.init()
++    }
++
++    func authenticate(provider: SSOIdentityProvider, expectedUserID: String? = nil) async -> Result<UserSessionProtocol, AuthenticationServiceError> {
++        guard !didStart, !isCancelled,
++              let scheme = Bundle.main.bundleIdentifier,
++              let callback = SSOCallback(scheme: scheme) else { return .failure(.ssoError(.unavailable)) }
++        didStart = true
++        requestID = callback.id
++        defer { stopLoading() }
++        return await withTaskCancellationHandler {
++            startLoading()
++            let result = await service.beginSSOLogin(provider: provider, callback: callback)
++            guard !isCancelled, !Task.isCancelled else {
++                service.cancelSSOLogin(requestID: callback.id)
++                return .failure(.ssoError(.cancelled))
++            }
++            let request: SSOLoginRequest
++            switch result {
++            case .success(let value): request = value
++            case .failure(let error): return .failure(error)
++            }
++            stopLoading()
++            let response = await present(request)
++            guard !isCancelled, !Task.isCancelled else {
++                service.cancelSSOLogin(requestID: callback.id)
++                return .failure(.ssoError(.cancelled))
++            }
++            switch response {
++            case .success(let url):
++                startLoading()
++                return await service.finishSSOLogin(requestID: request.id, callbackURL: url, expectedUserID: expectedUserID)
++            case .failure(let error):
++                service.cancelSSOLogin(requestID: callback.id)
++                return .failure(.ssoError(error))
++            }
++        } onCancel: {
++            Task { @MainActor [weak self] in self?.cancel() }
++        }
++    }
++
++    private func present(_ request: SSOLoginRequest) async -> Result<URL, SSOError> {
++        guard !isCancelled, let scheme = request.callback.url.scheme else { return .failure(.cancelled) }
++        return await withCheckedContinuation { continuation in
++            let session = ASWebAuthenticationSession(url: request.authorizationURL, callback: .customScheme(scheme)) { [weak self] url, error in
++                Task { @MainActor in
++                    let result: Result<URL, SSOError>
++                    if let url {
++                        result = request.callback.accepts(url) ? .success(url) : .failure(.invalidCallback)
++                    } else {
++                        result = .failure(error?.isOAuthUserCancellation == true ? .cancelled : .failed)
++                    }
++                    self?.complete(id: request.id, result: result)
++                }
++            }
++            session.presentationContextProvider = self
++            session.prefersEphemeralWebBrowserSession = true
++            activeRequest = Request(id: request.id, session: session, continuation: continuation)
++            if !session.start() { complete(id: request.id, result: .failure(.failed)) }
++        }
++    }
++
++    private func complete(id: UUID, result: Result<URL, SSOError>) {
++        guard let request = activeRequest, request.id == id else { return }
++        activeRequest = nil
++        request.continuation.resume(returning: result)
++    }
++
++    @discardableResult
++    func cancel() -> Bool {
++        if let requestID, !service.cancelSSOLogin(requestID: requestID) { return false }
++        isCancelled = true
++        if let request = activeRequest {
++            activeRequest = nil
++            request.session.cancel()
++            // Programmatic ASWebAuthenticationSession cancellation does not call its callback.
++            request.continuation.resume(returning: .failure(.cancelled))
++        }
++        stopLoading()
++        return true
++    }
++
++    func presentationAnchor(for session: ASWebAuthenticationSession) -> ASPresentationAnchor { anchor }
++
++    private func startLoading() {
++        indicators.submitIndicator(UserIndicator(id: loadingID, type: .modal, title: L10n.commonLoading, persistent: true))
++    }
++
++    private func stopLoading() {
++        indicators.retractIndicatorWithId(loadingID)
++    }
++}
+diff --git a/ElementX/Sources/Screens/Authentication/SSOProviderButtons.swift b/ElementX/Sources/Screens/Authentication/SSOProviderButtons.swift
+new file mode 100644
+--- /dev/null
++++ b/ElementX/Sources/Screens/Authentication/SSOProviderButtons.swift
+@@ -0,0 +1,28 @@
++//
++// Copyright 2026 CHIICH contributors.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++// Please see LICENSE files in the repository root for full details.
++//
++
++import Compound
++import SwiftUI
++
++struct SSOProviderButtons: View {
++    let action: (SSOIdentityProvider) -> Void
++
++    var body: some View {
++        VStack(spacing: 16) {
++            Button { action(.apple) } label: {
++                Label(NSLocalizedString("chiich_sso_apple", comment: "Apple SSO button"), systemImage: "apple.logo")
++            }
++            .buttonStyle(.compound(.primary))
++            .accessibilityIdentifier("chiich.login.apple")
++
++            Button { action(.google) } label: {
++                Text(NSLocalizedString("chiich_sso_google", comment: "Google SSO button"))
++            }
++            .buttonStyle(.compound(.secondary))
++            .accessibilityIdentifier("chiich.login.google")
++        }
++    }
++}
+diff --git a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenCoordinator.swift b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenCoordinator.swift
+--- a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenCoordinator.swift
++++ b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenCoordinator.swift
+@@ -48,6 +48,8 @@
+     }
+     
+     private var oAuthPresenter: OAuthAuthenticationPresenter?
++    private var ssoPresenter: SSOAuthenticationPresenter?
++    private var ssoTask: Task<Void, Never>?
+     
+     var actions: AnyPublisher<SoftLogoutScreenCoordinatorResult, Never> {
+         actionsSubject.eraseToAnyPublisher()
+@@ -79,12 +81,15 @@
+                     actionsSubject.send(.clearAllData)
+                 case .continueWithOAuth:
+                     continueWithOAuth(presentationAnchor: viewModel.context.viewState.window)
++                case .continueWithSSO(let provider):
++                    continueWithSSO(provider)
+                 }
+             }
+             .store(in: &cancellables)
+     }
+     
+     func stop() {
++        if ssoPresenter?.cancel() != false { ssoTask?.cancel() }
+         stopLoading()
+     }
+     
+@@ -115,6 +120,7 @@
+     
+     /// Hide the currently displayed activity indicator.
+     private func stopLoading() {
++        viewModel.context.isAuthenticating = false
+         parameters.userIndicatorController.retractIndicatorWithId(Self.loadingIndicatorIdentifier)
+     }
+     
+@@ -144,6 +150,28 @@
+         }
+     }
+     
++    private func continueWithSSO(_ provider: SSOIdentityProvider) {
++        guard ssoTask == nil, let window = viewModel.context.viewState.window,
++              let service = authenticationService as? SSOAuthenticationServiceProtocol else {
++            viewModel.context.isAuthenticating = false
++            return
++        }
++        let presenter = SSOAuthenticationPresenter(service: service, anchor: window, indicators: parameters.userIndicatorController)
++        ssoPresenter = presenter
++        ssoTask = Task { [weak self] in
++            guard let self else { return }
++            let result = await presenter.authenticate(provider: provider, expectedUserID: parameters.credentials.userID)
++            ssoPresenter = nil
++            ssoTask = nil
++            viewModel.context.isAuthenticating = false
++            switch result {
++            case .success(let userSession): actionsSubject.send(.signedIn(userSession))
++            case .failure(.ssoError(.cancelled)): break
++            case .failure(let error): handleError(error)
++            }
++        }
++    }
++
+     private func continueWithOAuth(presentationAnchor: UIWindow?) {
+         guard let presentationAnchor else { return }
+         
+diff --git a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenModels.swift b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenModels.swift
+--- a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenModels.swift
++++ b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenModels.swift
+@@ -24,6 +24,7 @@
+     case clearAllData
+     /// Continue using OAuth.
+     case continueWithOAuth
++    case continueWithSSO(SSOIdentityProvider)
+     
+     /// A string representation of the result, ignoring any associated values that could leak PII.
+     var description: String {
+@@ -36,6 +37,8 @@
+             return "clearAllData"
+         case .continueWithOAuth:
+             return "continueWithOAuth"
++        case .continueWithSSO:
++            return "continueWithSSO"
+         }
+     }
+ }
+@@ -46,6 +49,7 @@
+     
+     /// Data about the selected homeserver.
+     var homeserver: LoginHomeserver
++    var isPasswordLoginExpanded = false
+     
+     /// Flag indicating soft logged out user needs backup for some keys
+     var keyBackupNeeded: Bool
+@@ -56,6 +60,14 @@
+     /// The types of login supported by the homeserver.
+     var loginMode: LoginMode {
+         homeserver.loginMode
++    }
++
++    var canShowPasswordFallback: Bool {
++        loginMode == .sso && homeserver.supportsPasswordLogin
++    }
++
++    var isPasswordLoginVisible: Bool {
++        loginMode == .password || (canShowPasswordFallback && isPasswordLoginExpanded)
+     }
+     
+     /// The presentation anchor used for OAuth authentication.
+@@ -68,11 +80,12 @@
+     
+     /// `true` when valid credentials have been entered and a homeserver has been loaded.
+     var canSubmit: Bool {
+-        !bindings.password.isEmpty
++        isPasswordLoginVisible && !bindings.password.isEmpty && !bindings.isAuthenticating
+     }
+ }
+ 
+ struct SoftLogoutScreenBindings {
++    var isAuthenticating = false
+     /// The password input by the user.
+     var password: String
+     /// Information describing the currently displayed alert.
+@@ -80,6 +93,8 @@
+ }
+ 
+ enum SoftLogoutScreenViewAction {
++    case togglePasswordLogin
++    case continueWithSSO(SSOIdentityProvider)
+     /// Updates the window used as the OAuth presentation anchor.
+     case updateWindow(UIWindow?)
+     /// Login.
+diff --git a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenViewModel.swift b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenViewModel.swift
+--- a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenViewModel.swift
++++ b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/SoftLogoutScreenViewModel.swift
+@@ -32,14 +32,26 @@
+     
+     override func process(viewAction: SoftLogoutScreenViewAction) {
+         switch viewAction {
++        case .togglePasswordLogin:
++            guard state.canShowPasswordFallback, !state.bindings.isAuthenticating else { return }
++            state.isPasswordLoginExpanded.toggle()
++            if !state.isPasswordLoginExpanded { state.bindings.password = "" }
+         case .login:
++            guard state.canSubmit else { return }
++            state.bindings.isAuthenticating = true
+             actionsSubject.send(.login(state.bindings.password))
+         case .forgotPassword:
++            guard !state.bindings.isAuthenticating else { return }
+             actionsSubject.send(.forgotPassword)
+         case .clearAllData:
++            guard !state.bindings.isAuthenticating else { return }
+             actionsSubject.send(.clearAllData)
+         case .continueWithOAuth:
+             actionsSubject.send(.continueWithOAuth)
++        case .continueWithSSO(let provider):
++            guard state.loginMode == .sso, !state.bindings.isAuthenticating, state.window != nil else { return }
++            state.bindings.isAuthenticating = true
++            actionsSubject.send(.continueWithSSO(provider))
+         case .updateWindow(let window):
+             guard state.window != window else { return }
+             Task { state.window = window }
+diff --git a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/View/SoftLogoutScreen.swift b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/View/SoftLogoutScreen.swift
+--- a/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/View/SoftLogoutScreen.swift
++++ b/ElementX/Sources/Screens/Authentication/SoftLogoutScreen/View/SoftLogoutScreen.swift
+@@ -27,13 +27,34 @@
+                 switch context.viewState.loginMode {
+                 case .password:
+                     loginForm
++                        .disabled(context.isAuthenticating)
+                 case .oAuth:
+                     oAuthButton
++                case .sso:
++                    VStack(spacing: 24) {
++                        SSOProviderButtons { context.send(viewAction: .continueWithSSO($0)) }
++                            .disabled(context.viewState.window == nil || context.isAuthenticating)
++                        if context.viewState.canShowPasswordFallback {
++                            Button {
++                                context.send(viewAction: .togglePasswordLogin)
++                            } label: {
++                                Text(NSLocalizedString(context.viewState.isPasswordLoginExpanded ? "chiich_hide_password_login" : "chiich_password_login",
++                                                       comment: "Existing-account password fallback"))
++                            }
++                            .buttonStyle(.compound(.secondary))
++                            .disabled(context.isAuthenticating)
++                            .accessibilityIdentifier("chiich.softLogout.passwordFallback")
++                            if context.viewState.isPasswordLoginVisible {
++                                loginForm.disabled(context.isAuthenticating)
++                            }
++                        }
++                    }
+                 default:
+                     loginUnavailableText
+                 }
+                 
+                 clearDataForm
++                    .disabled(context.isAuthenticating)
+                     .padding(.top, 16)
+             }
+             .readableFrame()
+diff --git a/ElementX/Sources/Services/Authentication/AuthenticationService.swift b/ElementX/Sources/Services/Authentication/AuthenticationService.swift
+--- a/ElementX/Sources/Services/Authentication/AuthenticationService.swift
++++ b/ElementX/Sources/Services/Authentication/AuthenticationService.swift
+@@ -10,7 +10,12 @@
+ import Foundation
+ import MatrixRustSDK
+ 
+-class AuthenticationService: AuthenticationServiceProtocol {
++class AuthenticationService: AuthenticationServiceProtocol, SSOAuthenticationServiceProtocol {
++    private var ssoAttemptID: UUID?
++    private var ssoAttempt: (request: SSOLoginRequest, handler: SsoHandler, client: ClientProtocol)?
++    private var ssoIsFinishing = false
++    private var ssoIsCommitting = false
++    private var passwordLoginInProgress = false
+     private var client: ClientProtocol?
+     private var sessionDirectories: SessionDirectories
+     private let passphrase: Data
+@@ -74,14 +79,18 @@
+     // MARK: - Public
+     
+     func configure(for serverNameOrBaseURL: String, flow: AuthenticationFlow) async -> Result<Void, AuthenticationServiceError> {
++        guard ssoAttemptID == nil, !ssoIsFinishing, !passwordLoginInProgress else { return .failure(.ssoError(.unavailable)) }
+         do {
+             var homeserver = LoginHomeserver(accountProvider: .generic(serverNameOrBaseURL), loginMode: .unknown)
+             
+             let client = try await makeClient(serverNameOrBaseURL: serverNameOrBaseURL)
+             let loginDetails = await client.homeserverLoginDetails()
++            homeserver.supportsPasswordLogin = loginDetails.supportsPasswordLogin()
+             
+             homeserver.loginMode = if loginDetails.supportsOauthLogin() {
+                 .oAuth(supportsCreatePrompt: loginDetails.supportedOauthPrompts().contains(.create))
++            } else if loginDetails.supportsSsoLogin() {
++                .sso
+             } else if loginDetails.supportsPasswordLogin() {
+                 .password
+             } else {
+@@ -91,7 +100,8 @@
+             if flow == .login, homeserver.loginMode == .unsupported {
+                 return .failure(.loginNotSupported)
+             }
+-            if flow == .register, !homeserver.loginMode.supportsOAuthFlow {
++            // Synapse SSO provisions the account on first identity-provider sign-in.
++            if flow == .register, !homeserver.loginMode.supportsOAuthFlow, homeserver.loginMode != .sso {
+                 return .failure(.registrationNotSupported)
+             }
+             
+@@ -151,7 +161,10 @@
+     }
+     
+     func login(username: String, password: String, initialDeviceName: String?, deviceID: String?) async -> Result<UserSessionProtocol, AuthenticationServiceError> {
+-        guard let client else { return .failure(.failedLoggingIn) }
++        guard let client, homeserver.value.supportsPasswordLogin,
++              ssoAttemptID == nil, !ssoIsFinishing, !passwordLoginInProgress else { return .failure(.failedLoggingIn) }
++        passwordLoginInProgress = true
++        defer { passwordLoginInProgress = false }
+         do {
+             try await client.login(username: username, password: password, initialDeviceName: initialDeviceName, deviceId: deviceID)
+             
+@@ -256,11 +269,103 @@
+     }
+     
+     func reset() {
++        guard !passwordLoginInProgress, cancelSSOLogin() else { return }
+         homeserverSubject.send(LoginHomeserver(accountProvider: appSettings.defaultAccountProvider, loginMode: .unknown))
+         flow = .login
+         client = nil
+     }
+     
++    // MARK: - Legacy Matrix SSO
++
++    func beginSSOLogin(provider: SSOIdentityProvider, callback: SSOCallback) async -> Result<SSOLoginRequest, AuthenticationServiceError> {
++        guard let client, homeserver.value.loginMode == .sso,
++              ssoAttemptID == nil, !ssoIsFinishing, !passwordLoginInProgress else { return .failure(.ssoError(.unavailable)) }
++        let id = callback.id
++        ssoAttemptID = id
++        do {
++            let handler = try await client.startSsoLogin(redirectUrl: callback.url.absoluteString, idpId: provider.rawValue)
++            guard ssoAttemptID == id, !Task.isCancelled else {
++                if ssoAttemptID == id { cancelSSOLogin() }
++                return .failure(.ssoError(.cancelled))
++            }
++            guard let authorizationURL = URL(string: handler.url()),
++                  authorizationURL.scheme == "https",
++                  authorizationURL.host == URL(string: client.homeserver())?.host else {
++                cancelSSOLogin()
++                return .failure(.ssoError(.unavailable))
++            }
++            let request = SSOLoginRequest(id: id, authorizationURL: authorizationURL, callback: callback)
++            ssoAttempt = (request, handler, client)
++            return .success(request)
++        } catch {
++            if ssoAttemptID == id { cancelSSOLogin() }
++            // SDK errors may contain the callback/token. Do not log or surface them.
++            return .failure(.ssoError(Task.isCancelled ? .cancelled : .failed))
++        }
++    }
++
++    func finishSSOLogin(requestID: UUID, callbackURL: URL, expectedUserID: String?) async -> Result<UserSessionProtocol, AuthenticationServiceError> {
++        guard let attempt = ssoAttempt, ssoAttemptID == requestID,
++              attempt.request.id == requestID, !ssoIsFinishing else { return .failure(.ssoError(.cancelled)) }
++        // Consume the handler once, including on a malformed callback.
++        ssoAttempt = nil
++        guard attempt.request.callback.accepts(callbackURL) else {
++            ssoAttemptID = nil
++            return .failure(.ssoError(.invalidCallback))
++        }
++        ssoIsFinishing = true
++        defer {
++            ssoIsFinishing = false
++            if ssoAttemptID == requestID { ssoAttemptID = nil }
++        }
++        let client = attempt.client
++        do {
++            try await attempt.handler.finish(callbackUrl: callbackURL.absoluteString)
++            guard ssoAttemptID == requestID, !Task.isCancelled else {
++                _ = try? await client.logout()
++                return .failure(.ssoError(.cancelled))
++            }
++            // A soft-logout recovery must never replace the user with another Apple/Google account.
++            if let expectedUserID, try client.userId() != expectedUserID {
++                _ = try? await client.logout()
++                return .failure(.invalidCredentials)
++            }
++            if try client.session().refreshToken != nil {
++                _ = try? await client.logout()
++                return .failure(.sessionTokenRefreshNotSupported)
++            }
++            await verifyClientIfPossible(client: client)
++            guard ssoAttemptID == requestID, !Task.isCancelled else {
++                _ = try? await client.logout()
++                return .failure(.ssoError(.cancelled))
++            }
++            // Commit boundary: the upstream store persists Keychain credentials across awaits
++            // and has no pre-add rollback API. Keep this final handoff noncancellable and
++            // deliver its success, even if the caller leaves the login screen meanwhile.
++            ssoIsCommitting = true
++            defer { ssoIsCommitting = false }
++            return await userSession(for: client)
++        } catch {
++            // Never interpolate SDK errors or callback URLs here.
++            return .failure(.ssoError(Task.isCancelled ? .cancelled : .failed))
++        }
++    }
++
++    @discardableResult
++    func cancelSSOLogin(requestID: UUID) -> Bool {
++        // A cancelled presenter may resume after a new attempt has already started.
++        guard ssoAttemptID == requestID else { return true }
++        return cancelSSOLogin()
++    }
++
++    @discardableResult
++    private func cancelSSOLogin() -> Bool {
++        guard !ssoIsCommitting else { return false }
++        ssoAttemptID = nil
++        ssoAttempt = nil
++        return true
++    }
++
+     // MARK: - Private
+     
+     private func makeClient(serverNameOrBaseURL: String) async throws -> ClientProtocol {
+diff --git a/ElementX/Sources/Services/Authentication/AuthenticationServiceProtocol.swift b/ElementX/Sources/Services/Authentication/AuthenticationServiceProtocol.swift
+--- a/ElementX/Sources/Services/Authentication/AuthenticationServiceProtocol.swift
++++ b/ElementX/Sources/Services/Authentication/AuthenticationServiceProtocol.swift
+@@ -21,6 +21,8 @@
+ enum AuthenticationServiceError: Error, Equatable {
+     /// An error occurred during OAuth authentication.
+     case oAuthError(OAuthError)
++    /// Legacy Matrix SSO (Apple/Google on CHIICH).
++    case ssoError(SSOError)
+     /// An error occurred during login with QR Code.
+     case qrCodeError(QRCodeLoginError)
+     
+diff --git a/ElementX/Sources/Services/Authentication/SSOAuthenticationServiceProtocol.swift b/ElementX/Sources/Services/Authentication/SSOAuthenticationServiceProtocol.swift
+new file mode 100644
+--- /dev/null
++++ b/ElementX/Sources/Services/Authentication/SSOAuthenticationServiceProtocol.swift
+@@ -0,0 +1,61 @@
++//
++// Copyright 2026 CHIICH contributors.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++// Please see LICENSE files in the repository root for full details.
++//
++
++import Foundation
++
++/// The existing Synapse identity providers; these are server IDs, not client OAuth credentials.
++nonisolated enum SSOIdentityProvider: String, CaseIterable {
++    case apple = "oidc-apple"
++    case google = "oidc-google"
++}
++
++nonisolated enum SSOError: Error, Equatable {
++    case cancelled
++    case unavailable
++    case invalidCallback
++    case failed
++}
++
++/// Additive legacy SSO support. OAuth/MAS remains a separate upstream authentication path.
++protocol SSOAuthenticationServiceProtocol: AnyObject {
++    func beginSSOLogin(provider: SSOIdentityProvider, callback: SSOCallback) async -> Result<SSOLoginRequest, AuthenticationServiceError>
++    func finishSSOLogin(requestID: UUID, callbackURL: URL, expectedUserID: String?) async -> Result<UserSessionProtocol, AuthenticationServiceError>
++    /// Returns false after native session persistence has begun; consume its successful result.
++    @discardableResult func cancelSSOLogin(requestID: UUID) -> Bool
++}
++
++nonisolated struct SSOLoginRequest {
++    let id: UUID
++    let authorizationURL: URL
++    let callback: SSOCallback
++}
++
++/// Synapse appends loginToken to the redirect. The SDK exchanges it but does not bind
++/// the redirect to this attempt, so check the full destination before handing it back.
++/// The token itself is never read, logged, persisted or exchanged by app code.
++nonisolated struct SSOCallback {
++    let id: UUID
++    let url: URL
++
++    init?(scheme: String, nonce: UUID = UUID()) {
++        var components = URLComponents()
++        components.scheme = scheme
++        components.host = "sso"
++        components.path = "/" + nonce.uuidString.lowercased()
++        guard let url = components.url, url.scheme == scheme, !scheme.isEmpty else { return nil }
++        id = nonce
++        self.url = url
++    }
++
++    func accepts(_ candidate: URL) -> Bool {
++        guard let received = URLComponents(url: candidate, resolvingAgainstBaseURL: false),
++              let expected = URLComponents(url: url, resolvingAgainstBaseURL: false) else { return false }
++        return received.scheme == expected.scheme && received.host == expected.host
++            && received.percentEncodedPath == expected.percentEncodedPath
++            && received.user == nil && received.password == nil && received.port == nil
++            && received.fragment == nil
++    }
++}
+diff --git a/UnitTests/Sources/AuthenticationServiceTests.swift b/UnitTests/Sources/AuthenticationServiceTests.swift
+--- a/UnitTests/Sources/AuthenticationServiceTests.swift
++++ b/UnitTests/Sources/AuthenticationServiceTests.swift
+@@ -74,7 +74,7 @@
+         }
+         
+         #expect(service.flow == .login)
+-        #expect(service.homeserver.value == .init(accountProvider: .managed(serverName: "matrix.org", baseURL: "https://matrix-client.matrix.org"),
++        #expect(service.homeserver.value == .init(accountProvider: AppSettings.volatile().defaultAccountProvider,
+                                                   loginMode: .unknown))
+     }
+     
+diff --git a/UnitTests/Sources/LoginScreenViewModelTests.swift b/UnitTests/Sources/LoginScreenViewModelTests.swift
+--- a/UnitTests/Sources/LoginScreenViewModelTests.swift
++++ b/UnitTests/Sources/LoginScreenViewModelTests.swift
+@@ -228,6 +228,8 @@
+     
+     private mutating func setupViewModel(serverNameOrBaseURL: String = "example.com", loginHint: String? = nil) async {
+         let appSettings = AppSettings.volatile()
++        // These upstream cases intentionally exercise discovery across servers.
++        appSettings.configurePasswordFallbackTests(allowOtherAccountProviders: true)
+         
+         clientFactory = ClientFactoryMock(.init())
+         service = AuthenticationService(userSessionManager: UserSessionManagerMock(.init()),
+diff --git a/UnitTests/Sources/SSOAuthenticationTests.swift b/UnitTests/Sources/SSOAuthenticationTests.swift
+new file mode 100644
+--- /dev/null
++++ b/UnitTests/Sources/SSOAuthenticationTests.swift
+@@ -0,0 +1,220 @@
++//
++// Copyright 2026 CHIICH contributors.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++// Please see LICENSE files in the repository root for full details.
++//
++
++@testable import ElementX
++import Foundation
++import MatrixRustSDK
++import MatrixRustSDKMocks
++import Testing
++
++struct SSOCallbackTests {
++    @Test
++    func callbackIsBoundToOneAttempt() throws {
++        let callback = try #require(SSOCallback(scheme: "one.chiich.app"))
++        #expect(callback.accepts(URL(string: callback.url.absoluteString + "?loginToken=test-only")!))
++        let another = try #require(SSOCallback(scheme: "one.chiich.app"))
++        #expect(!callback.accepts(another.url))
++        #expect(!callback.accepts(URL(string: callback.url.absoluteString.replacingOccurrences(of: "one.chiich.app:", with: "other:"))!))
++        #expect(!callback.accepts(URL(string: callback.url.absoluteString.replacingOccurrences(of: "://sso/", with: "://elsewhere/"))!))
++        #expect(!callback.accepts(URL(string: callback.url.absoluteString + "/suffix?loginToken=test-only")!))
++        #expect(!callback.accepts(URL(string: callback.url.absoluteString + "#fragment")!))
++        #expect(!callback.accepts(URL(string: callback.url.absoluteString.replacingOccurrences(of: "://sso/", with: "://user@sso/"))!))
++        #expect(!callback.accepts(URL(string: callback.url.absoluteString.replacingOccurrences(of: "://sso/", with: "://sso:123/"))!))
++    }
++}
++
++@MainActor
++struct SSOAuthenticationTests {
++    private var service: AuthenticationService
++    private var client: ClientSDKMock
++    private var handler: SsoHandlerSDKMock
++    private var manager: UserSessionManagerMock
++
++    init() throws {
++        let configuration = ClientFactoryMock.Configuration()
++        client = try #require(configuration.homeserverClients["example.com"])
++        let details = try #require(client.homeserverLoginDetailsReturnValue as? HomeserverLoginDetailsSDKMock)
++        details.supportsSsoLoginReturnValue = true
++        client.userIdReturnValue = "@alice:example.com"
++        handler = SsoHandlerSDKMock()
++        handler.urlReturnValue = "https://matrix.example.com/_matrix/client/v3/login/sso/redirect/oidc-apple"
++        client.startSsoLoginRedirectUrlIdpIdReturnValue = handler
++        manager = UserSessionManagerMock(.init())
++        service = AuthenticationService(userSessionManager: manager,
++                                        encryptionKeyProvider: MockEncryptionKeyProvider(),
++                                        classicAppManager: nil,
++                                        clientFactory: ClientFactoryMock(configuration),
++                                        appSettings: .volatile(),
++                                        appHooks: AppHooks())
++    }
++
++    private func begin(_ provider: SSOIdentityProvider = .apple) async throws -> SSOLoginRequest {
++        try await service.configure(for: "example.com", flow: .login).get()
++        let callback = try #require(SSOCallback(scheme: "one.chiich.app"))
++        return try await service.beginSSOLogin(provider: provider, callback: callback).get()
++    }
++
++    private func callbackURL(_ request: SSOLoginRequest) -> URL {
++        // Dummy value; tests never contact a server or consume real credentials.
++        URL(string: request.callback.url.absoluteString + "?loginToken=test-only")!
++    }
++
++    @Test(arguments: [AuthenticationFlow.login, .register])
++    func ssoSupportsSignInAndFirstSignInRegistration(flow: AuthenticationFlow) async throws {
++        try await service.configure(for: "example.com", flow: flow).get()
++        #expect(service.homeserver.value.loginMode == .sso)
++        #expect(service.flow == flow)
++    }
++
++    @Test(arguments: SSOIdentityProvider.allCases)
++    func nativeProviderAndCallbackArePassedToSDK(provider: SSOIdentityProvider) async throws {
++        let request = try await begin(provider)
++        #expect(client.startSsoLoginRedirectUrlIdpIdReceivedArguments?.idpId == provider.rawValue)
++        #expect(client.startSsoLoginRedirectUrlIdpIdReceivedArguments?.redirectUrl == request.callback.url.absoluteString)
++    }
++
++    @Test
++    func successfulLoginUsesNativeSessionManagerOnce() async throws {
++        let request = try await begin()
++        _ = try await service.finishSSOLogin(requestID: request.id, callbackURL: callbackURL(request), expectedUserID: nil).get()
++        #expect(handler.finishCallbackUrlCallsCount == 1)
++        #expect(manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++        let duplicate = await service.finishSSOLogin(requestID: request.id, callbackURL: callbackURL(request), expectedUserID: nil)
++        #expect(duplicate.failure == .ssoError(.cancelled))
++        #expect(handler.finishCallbackUrlCallsCount == 1)
++    }
++
++    @Test
++    func wrongCallbackNeverReachesSDK() async throws {
++        let request = try await begin()
++        let wrong = try #require(SSOCallback(scheme: "one.chiich.app"))
++        let result = await service.finishSSOLogin(requestID: request.id, callbackURL: wrong.url, expectedUserID: nil)
++        #expect(result.failure == .ssoError(.invalidCallback))
++        #expect(handler.finishCallbackUrlCallsCount == 0)
++        #expect(manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++    }
++
++    @Test
++    func staleCallbackAndCancellationCannotAffectNextAttempt() async throws {
++        let old = try await begin()
++        #expect(service.cancelSSOLogin(requestID: old.id))
++        let current = try await begin(.google)
++        #expect(service.cancelSSOLogin(requestID: old.id))
++        let stale = await service.finishSSOLogin(requestID: old.id, callbackURL: callbackURL(old), expectedUserID: nil)
++        #expect(stale.failure == .ssoError(.cancelled))
++        _ = try await service.finishSSOLogin(requestID: current.id, callbackURL: callbackURL(current), expectedUserID: nil).get()
++        #expect(handler.finishCallbackUrlCallsCount == 1)
++    }
++
++    @Test
++    func duplicateDuringExchangeCannotExchangeTwiceOrReconfigure() async throws {
++        let request = try await begin()
++        let gate = SSOTestGate()
++        handler.finishCallbackUrlClosure = { _ in await gate.suspend() }
++        let operation = Task { await service.finishSSOLogin(requestID: request.id, callbackURL: callbackURL(request), expectedUserID: nil) }
++        await gate.waitUntilEntered()
++        let duplicate = await service.finishSSOLogin(requestID: request.id, callbackURL: callbackURL(request), expectedUserID: nil)
++        #expect(duplicate.failure == .ssoError(.cancelled))
++        let reconfigure = await service.configure(for: "matrix.org", flow: .login)
++        #expect(reconfigure.failure == .ssoError(.unavailable))
++        await gate.release()
++        _ = try await operation.value.get()
++        #expect(handler.finishCallbackUrlCallsCount == 1)
++    }
++
++    @Test
++    func cancellationDuringExchangeNeverPersistsSession() async throws {
++        let request = try await begin()
++        let gate = SSOTestGate()
++        handler.finishCallbackUrlClosure = { _ in await gate.suspend() }
++        let operation = Task { await service.finishSSOLogin(requestID: request.id, callbackURL: callbackURL(request), expectedUserID: nil) }
++        await gate.waitUntilEntered()
++        #expect(service.cancelSSOLogin(requestID: request.id))
++        await gate.release()
++        #expect(await operation.value.failure == .ssoError(.cancelled))
++        #expect(manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++        #expect(client.logoutCallsCount == 1)
++    }
++
++    @Test
++    func cancelledBeginCanBeRetried() async throws {
++        try await service.configure(for: "example.com", flow: .login).get()
++        let gate = SSOTestGate()
++        let handler = handler
++        client.startSsoLoginRedirectUrlIdpIdClosure = { _, _ in
++            await gate.suspend()
++            return handler
++        }
++        let callback = try #require(SSOCallback(scheme: "one.chiich.app"))
++        let operation = Task { await service.beginSSOLogin(provider: .apple, callback: callback) }
++        await gate.waitUntilEntered()
++        operation.cancel()
++        await gate.release()
++        #expect(await operation.value.failure == .ssoError(.cancelled))
++        client.startSsoLoginRedirectUrlIdpIdClosure = nil
++        _ = try await begin(.google)
++    }
++
++    @Test
++    func wrongSoftLogoutAccountIsNotPersisted() async throws {
++        let request = try await begin()
++        let result = await service.finishSSOLogin(requestID: request.id, callbackURL: callbackURL(request), expectedUserID: "@different:example.com")
++        #expect(result.failure == .invalidCredentials)
++        #expect(manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++        #expect(client.logoutCallsCount == 1)
++    }
++
++    @Test
++    func nativeCommitIsDeliveredInsteadOfDiscardedOnCancellation() async throws {
++        let request = try await begin()
++        let gate = SSOTestGate()
++        let session = UserSessionMock(.init())
++        manager.userSessionForSessionDirectoriesPassphraseClosure = { _, _, _ in
++            await gate.suspend()
++            return .success(session)
++        }
++        let operation = Task { await service.finishSSOLogin(requestID: request.id, callbackURL: callbackURL(request), expectedUserID: nil) }
++        await gate.waitUntilEntered()
++        #expect(!service.cancelSSOLogin(requestID: request.id))
++        service.reset()
++        #expect(service.homeserver.value.loginMode == .sso)
++        await gate.release()
++        _ = try await operation.value.get()
++        #expect(manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++}
++
++private extension Result {
++    var failure: Failure? {
++        if case .failure(let error) = self { return error }
++        return nil
++    }
++}
++
++private actor SSOTestGate {
++    private var entered = false
++    private var entryWaiters: [CheckedContinuation<Void, Never>] = []
++    private var continuation: CheckedContinuation<Void, Never>?
++
++    func suspend() async {
++        await withCheckedContinuation { continuation in
++            self.continuation = continuation
++            entered = true
++            entryWaiters.forEach { $0.resume() }
++            entryWaiters.removeAll()
++        }
++    }
++
++    func waitUntilEntered() async {
++        guard !entered else { return }
++        await withCheckedContinuation { entryWaiters.append($0) }
++    }
++
++    func release() {
++        continuation?.resume()
++        continuation = nil
++    }
++}
+diff --git a/UnitTests/Sources/SSOPasswordFallbackTests.swift b/UnitTests/Sources/SSOPasswordFallbackTests.swift
+new file mode 100644
+--- /dev/null
++++ b/UnitTests/Sources/SSOPasswordFallbackTests.swift
+@@ -0,0 +1,393 @@
++//
++// Copyright 2026 CHIICH contributors.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++// Please see LICENSE files in the repository root for full details.
++//
++
++@testable import ElementX
++import Combine
++import Foundation
++import MatrixRustSDK
++import MatrixRustSDKMocks
++import Testing
++
++@Suite(.timeLimit(.minutes(1)))
++@MainActor
++struct SSOPasswordFallbackTests {
++    @Test(arguments: [true, false])
++    func fallbackRequiresDiscoveredPasswordCapability(supportsPassword: Bool) async throws {
++        let fixture = try PasswordFallbackFixture(supportsPassword: supportsPassword)
++        let viewModel = try await fixture.loginViewModel()
++        let context = viewModel.context
++
++        #expect(fixture.service.homeserver.value.loginMode == .sso)
++        #expect(fixture.service.homeserver.value.supportsPasswordLogin == supportsPassword)
++        #expect(context.viewState.canShowPasswordFallback == supportsPassword)
++        #expect(!context.viewState.isPasswordLoginVisible)
++        context.username = "alice"
++        context.password = "12345678" // Synthetic fixture only.
++        #expect(!context.viewState.canSubmit)
++
++        context.send(viewAction: .togglePasswordLogin)
++        #expect(context.viewState.isPasswordLoginVisible == supportsPassword)
++        #expect(context.viewState.canSubmit == supportsPassword)
++        #expect(context.viewState.loginMode == .sso)
++        #expect(fixture.client.startSsoLoginRedirectUrlIdpIdCallsCount == 0)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++    }
++
++    @Test
++    func registrationNeverExposesExistingAccountPasswordFallback() async throws {
++        let fixture = try PasswordFallbackFixture()
++        let viewModel = try await fixture.loginViewModel(flow: .register)
++        let context = viewModel.context
++        context.username = "alice"
++        context.password = "12345678"
++
++        context.send(viewAction: .togglePasswordLogin)
++        context.send(viewAction: .next)
++
++        #expect(context.viewState.loginMode == .sso)
++        #expect(!context.viewState.canShowPasswordFallback)
++        #expect(!context.viewState.isPasswordLoginVisible)
++        #expect(!context.viewState.canSubmit)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++    }
++
++    @Test
++    func collapsingFallbackDiscardsPasswordAndRetainsSSO() async throws {
++        let fixture = try PasswordFallbackFixture()
++        let viewModel = try await fixture.loginViewModel()
++        let context = viewModel.context
++        context.send(viewAction: .togglePasswordLogin)
++        context.username = "alice"
++        context.password = "12345678"
++        context.send(viewAction: .togglePasswordLogin)
++
++        #expect(context.password.isEmpty)
++        #expect(context.username == "alice")
++        #expect(!context.viewState.canSubmit)
++        #expect(context.viewState.canShowPasswordFallback)
++        #expect(context.viewState.loginMode == .sso)
++    }
++
++    @Test(arguments: ["@alice:company.com", "@alice:example.com.evil.invalid"])
++    func foreignMatrixIDCannotDiscoverServerOrSendPassword(username: String) async throws {
++        let fixture = try PasswordFallbackFixture()
++        let viewModel = try await fixture.loginViewModel()
++        let context = viewModel.context
++        let configuredHomeserver = fixture.service.homeserver.value
++        let clientBuilds = fixture.factory.makeAuthenticationClientServerNameOrBaseURLSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksCallsCount
++        context.send(viewAction: .togglePasswordLogin)
++        context.username = username
++        context.password = "12345678"
++
++        context.send(viewAction: .parseUsername)
++        #expect(!context.viewState.isLoading)
++        context.send(viewAction: .next)
++
++        #expect(context.alertInfo?.id == .credentialsAlert)
++        #expect(fixture.service.homeserver.value == configuredHomeserver)
++        #expect(fixture.factory.makeAuthenticationClientServerNameOrBaseURLSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksCallsCount == clientBuilds)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++    }
++
++    @Test(arguments: ["alice", "@alice:example.com"])
++    func fallbackUsesNativePasswordLoginWithoutServerDiscovery(username: String) async throws {
++        let fixture = try PasswordFallbackFixture()
++        // Accept both normal username spellings in this synthetic SDK fixture.
++        fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdClosure = { _, _, _, _ in }
++        let viewModel = try await fixture.loginViewModel()
++        let context = viewModel.context
++        let clientBuilds = fixture.factory.makeAuthenticationClientServerNameOrBaseURLSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksCallsCount
++        context.send(viewAction: .togglePasswordLogin)
++        context.username = username
++        context.password = "12345678"
++        context.send(viewAction: .parseUsername)
++        let signedIn = deferFulfillment(viewModel.actions) {
++            if case .signedIn = $0 { return true }
++            return false
++        }
++
++        context.send(viewAction: .next)
++        #expect(context.viewState.isLoading)
++        try await signedIn.fulfill()
++
++        let arguments = try #require(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdReceivedArguments)
++        #expect(arguments.username == username)
++        #expect(arguments.password == "12345678")
++        #expect(arguments.deviceId == nil)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++        #expect(fixture.client.startSsoLoginRedirectUrlIdpIdCallsCount == 0)
++        #expect(fixture.factory.makeAuthenticationClientServerNameOrBaseURLSessionDirectoriesPassphraseClientSessionDelegateAppSettingsAppHooksCallsCount == clientBuilds)
++    }
++
++    @Test
++    func passwordSubmissionCannotBeRepeatedOrCollapsedWhilePending() async throws {
++        let fixture = try PasswordFallbackFixture()
++        let gate = PasswordFallbackGate()
++        fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdClosure = { _, _, _, _ in await gate.suspend() }
++        let viewModel = try await fixture.loginViewModel()
++        let context = viewModel.context
++        context.send(viewAction: .togglePasswordLogin)
++        context.username = "alice"
++        context.password = "12345678"
++        let signedIn = deferFulfillment(viewModel.actions) {
++            if case .signedIn = $0 { return true }
++            return false
++        }
++
++        context.send(viewAction: .next)
++        await gate.waitUntilEntered()
++        context.send(viewAction: .next)
++        context.send(viewAction: .togglePasswordLogin)
++        #expect(context.viewState.isLoading)
++        #expect(!context.viewState.canSubmit)
++        #expect(context.viewState.isPasswordLoginExpanded)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        await gate.release()
++        try await signedIn.fulfill()
++    }
++
++    @Test
++    func passwordCapabilityIsAlsoEnforcedAtServiceBoundary() async throws {
++        let fixture = try PasswordFallbackFixture(supportsPassword: false)
++        try await fixture.service.configure(for: "example.com", flow: .login).get()
++        let result = await fixture.service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil)
++
++        #expect(result.passwordFallbackFailure != nil)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++    }
++
++    @Test(arguments: [false, true])
++    func passwordExchangeAndCommitExcludeOtherAuthentication(duringCommit: Bool) async throws {
++        let fixture = try PasswordFallbackFixture()
++        try await fixture.service.configure(for: "example.com", flow: .login).get()
++        let configuredHomeserver = fixture.service.homeserver.value
++        let gate = PasswordFallbackGate()
++        if duringCommit {
++            let session = UserSessionMock(.init())
++            fixture.manager.userSessionForSessionDirectoriesPassphraseClosure = { _, _, _ in
++                await gate.suspend()
++                return .success(session)
++            }
++        } else {
++            fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdClosure = { _, _, _, _ in await gate.suspend() }
++        }
++        let operation = Task {
++            await fixture.service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil)
++        }
++        await gate.waitUntilEntered()
++        let callback = try #require(SSOCallback(scheme: "one.chiich.app"))
++        let sso = await fixture.service.beginSSOLogin(provider: .apple, callback: callback)
++        let duplicate = await fixture.service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil)
++        let reconfigure = await fixture.service.configure(for: "company.com", flow: .login)
++        fixture.service.reset()
++
++        #expect(sso.passwordFallbackFailure != nil)
++        #expect(duplicate.passwordFallbackFailure != nil)
++        #expect(reconfigure.passwordFallbackFailure != nil)
++        #expect(fixture.service.homeserver.value == configuredHomeserver)
++        #expect(fixture.client.startSsoLoginRedirectUrlIdpIdCallsCount == 0)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        await gate.release()
++        _ = try await operation.value.get()
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++        try await fixture.service.configure(for: "example.com", flow: .login).get()
++    }
++
++    @Test
++    func activeSSOExcludesPasswordUntilCancelled() async throws {
++        let fixture = try PasswordFallbackFixture()
++        try await fixture.service.configure(for: "example.com", flow: .login).get()
++        let callback = try #require(SSOCallback(scheme: "one.chiich.app"))
++        let request = try await fixture.service.beginSSOLogin(provider: .google, callback: callback).get()
++        let password = await fixture.service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil)
++        let reconfigure = await fixture.service.configure(for: "company.com", flow: .login)
++
++        #expect(password.passwordFallbackFailure != nil)
++        #expect(reconfigure.passwordFallbackFailure != nil)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++        #expect(fixture.service.cancelSSOLogin(requestID: request.id))
++        _ = try await fixture.service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil).get()
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test
++    func failedPasswordAttemptReleasesAuthenticationLockForRetry() async throws {
++        let fixture = try PasswordFallbackFixture()
++        try await fixture.service.configure(for: "example.com", flow: .login).get()
++        let result = await fixture.service.login(username: "alice", password: "wrong-synthetic-password", initialDeviceName: nil, deviceID: nil)
++        #expect(result.passwordFallbackFailure != nil)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++
++        _ = try await fixture.service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil).get()
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 2)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test(arguments: [true, false])
++    func softLogoutFallbackKeepsAccountAndBlocksDuplicateActions(supportsPassword: Bool) {
++        let credentials = SoftLogoutScreenCredentials(userID: "@alice:example.com",
++                                                      homeserverName: "example.com",
++                                                      userDisplayName: "Alice",
++                                                      deviceID: "EXISTINGDEVICE")
++        let homeserver = LoginHomeserver(accountProvider: .generic("example.com"),
++                                         loginMode: .sso,
++                                         supportsPasswordLogin: supportsPassword)
++        let viewModel = SoftLogoutScreenViewModel(credentials: credentials,
++                                                  homeserver: homeserver,
++                                                  keyBackupNeeded: true,
++                                                  password: "12345678")
++        let context = viewModel.context
++        var actions = [SoftLogoutScreenViewModelAction]()
++        let subscription = viewModel.actions.sink { actions.append($0) }
++        defer { subscription.cancel() }
++
++        context.send(viewAction: .login)
++        #expect(actions.isEmpty)
++        context.send(viewAction: .togglePasswordLogin)
++        #expect(context.viewState.canSubmit == supportsPassword)
++        context.send(viewAction: .login)
++        #expect(actions.count == (supportsPassword ? 1 : 0))
++        #expect(context.isAuthenticating == supportsPassword)
++        if supportsPassword {
++            if case .login(let password) = actions[0] {
++                #expect(password == "12345678")
++                #expect(actions[0].description == "login")
++            } else {
++                Issue.record("Password fallback emitted a different authentication action.")
++            }
++            context.send(viewAction: .login)
++            context.send(viewAction: .continueWithSSO(.apple))
++            context.send(viewAction: .clearAllData)
++            context.send(viewAction: .togglePasswordLogin)
++            #expect(actions.count == 1)
++            #expect(context.viewState.isPasswordLoginExpanded)
++        }
++        #expect(context.viewState.credentials.userID == credentials.userID)
++        #expect(context.viewState.credentials.deviceID == credentials.deviceID)
++        #expect(context.viewState.showRecoverEncryptionKeysMessage)
++    }
++
++    @Test
++    func softLogoutPasswordUsesExplicitAccountAndExistingDevice() async throws {
++        let fixture = try PasswordFallbackFixture()
++        try await fixture.service.configure(for: "example.com", flow: .login).get()
++        fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdClosure = { _, _, _, _ in }
++        _ = try await fixture.service.login(username: "@alice:example.com",
++                                            password: "12345678",
++                                            initialDeviceName: "Synthetic iPhone",
++                                            deviceID: "EXISTINGDEVICE").get()
++
++        let arguments = try #require(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdReceivedArguments)
++        #expect(arguments.username == "@alice:example.com")
++        #expect(arguments.deviceId == "EXISTINGDEVICE")
++        #expect(arguments.initialDeviceName == "Synthetic iPhone")
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++}
++
++@MainActor
++private struct PasswordFallbackFixture {
++    let settings: AppSettings
++    let client: ClientSDKMock
++    let factory: ClientFactoryMock
++    let manager: UserSessionManagerMock
++    let service: AuthenticationService
++
++    init(supportsPassword: Bool = true) throws {
++        let configuration = ClientFactoryMock.Configuration()
++        client = try #require(configuration.homeserverClients["example.com"])
++        let details = try #require(client.homeserverLoginDetailsReturnValue as? HomeserverLoginDetailsSDKMock)
++        details.supportsSsoLoginReturnValue = true
++        details.supportsPasswordLoginReturnValue = supportsPassword
++        client.userIdReturnValue = "@alice:example.com"
++        let handler = SsoHandlerSDKMock()
++        handler.urlReturnValue = "https://matrix.example.com/_matrix/client/v3/login/sso/redirect/oidc-google"
++        client.startSsoLoginRedirectUrlIdpIdReturnValue = handler
++        factory = ClientFactoryMock(configuration)
++        manager = UserSessionManagerMock(.init())
++        settings = .volatile()
++        settings.configurePasswordFallbackTests(allowOtherAccountProviders: false)
++        service = AuthenticationService(userSessionManager: manager,
++                                        encryptionKeyProvider: MockEncryptionKeyProvider(),
++                                        classicAppManager: nil,
++                                        clientFactory: factory,
++                                        appSettings: settings,
++                                        appHooks: AppHooks())
++    }
++
++    func loginViewModel(flow: AuthenticationFlow = .login) async throws -> LoginScreenViewModel {
++        try await service.configure(for: "example.com", flow: flow).get()
++        return LoginScreenViewModel(authenticationService: service,
++                                    loginHint: nil,
++                                    userIndicatorController: UserIndicatorControllerMock(),
++                                    appSettings: settings)
++    }
++}
++
++// Shared with the preserved upstream view-model tests, which explicitly opt in
++// to their synthetic multi-server fixtures instead of changing CHIICH defaults.
++extension AppSettings {
++    func configurePasswordFallbackTests(allowOtherAccountProviders: Bool) {
++        override(accountProviders: [.managed(serverName: "example.com", baseURL: "https://matrix.example.com")],
++                 allowOtherAccountProviders: allowOtherAccountProviders,
++                 hideBrandChrome: hideBrandChrome,
++                 pushGatewayBaseURL: pushGatewayBaseURL,
++                 oAuthRedirectURL: oAuthRedirectURL,
++                 oAuthClientURIPath: oAuthClientURIPath,
++                 websiteURL: websiteURL,
++                 logoURL: logoURL,
++                 copyrightURL: copyrightURL,
++                 acceptableUseURL: acceptableUseURL,
++                 privacyURL: privacyURL,
++                 encryptionURL: encryptionURL,
++                 deviceVerificationURL: deviceVerificationURL,
++                 chatBackupDetailsURL: chatBackupDetailsURL,
++                 identityPinningViolationDetailsURL: identityPinningViolationDetailsURL,
++                 historySharingDetailsURL: historySharingDetailsURL,
++                 elementWebHosts: elementWebHosts,
++                 accountProvisioningHost: accountProvisioningHost,
++                 bugReportApplicationID: bugReportApplicationID,
++                 analyticsTermsURL: analyticsTermsURL,
++                 mapTilerConfiguration: mapTilerConfiguration.publisher.value)
++    }
++}
++
++private extension Result {
++    var passwordFallbackFailure: Failure? {
++        if case .failure(let error) = self { return error }
++        return nil
++    }
++}
++
++private actor PasswordFallbackGate {
++    private var entered = false
++    private var entryWaiters: [CheckedContinuation<Void, Never>] = []
++    private var continuation: CheckedContinuation<Void, Never>?
++
++    func suspend() async {
++        await withCheckedContinuation { continuation in
++            self.continuation = continuation
++            entered = true
++            entryWaiters.forEach { $0.resume() }
++            entryWaiters.removeAll()
++        }
++    }
++
++    func waitUntilEntered() async {
++        guard !entered else { return }
++        await withCheckedContinuation { entryWaiters.append($0) }
++    }
++
++    func release() {
++        continuation?.resume()
++        continuation = nil
++    }
++}

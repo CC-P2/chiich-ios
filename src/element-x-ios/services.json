@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "mode": "services-enabled",
+  "team_id": "RM8GR3A69Q",
+  "bundle_id": "one.chiich.app",
+  "pusher_app_id": "one.chiich.app.ios.prod",
+  "apns_environment": "production",
+  "gateway_base_url": "https://chiich-push.onrender.com",
+  "render_service_id": "srv-dbm5r79srm7s73f5pcn0",
+  "gateway_ownership_verified": true,
+  "universal_links": false
+}

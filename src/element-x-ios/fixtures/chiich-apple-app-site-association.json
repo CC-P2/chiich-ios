@@ -1,0 +1,220 @@
+{
+  "applinks": {
+    "defaults": {
+      "caseSensitive": false,
+      "percentEncoded": false
+    },
+    "details": [
+      {
+        "appIDs": [
+          "RM8GR3A69Q.one.chiich.app"
+        ],
+        "components": [
+          {
+            "/": "/*/*",
+            "exclude": true,
+            "comment": "Keep nested routes, web assets and all callbacks in the browser."
+          },
+          {
+            "/": "/*.*",
+            "exclude": true
+          },
+          {
+            "/": "/*-*",
+            "exclude": true
+          },
+          {
+            "/": "/*_*",
+            "exclude": true
+          },
+          {
+            "/": "/",
+            "exclude": true
+          },
+          {
+            "/": "/?",
+            "exclude": true
+          },
+          {
+            "/": "/??",
+            "exclude": true
+          },
+          {
+            "/": "/?????????????????????????*",
+            "exclude": true,
+            "comment": "Registry aliases have at most 24 characters."
+          },
+          {
+            "?": "?*",
+            "exclude": true,
+            "comment": "Invitation parsing never consumes query parameters."
+          },
+          {
+            "#": "?*",
+            "exclude": true
+          },
+          {
+            "/": "/admin",
+            "exclude": true
+          },
+          {
+            "/": "/administrator",
+            "exclude": true
+          },
+          {
+            "/": "/administrators",
+            "exclude": true
+          },
+          {
+            "/": "/support",
+            "exclude": true
+          },
+          {
+            "/": "/help",
+            "exclude": true
+          },
+          {
+            "/": "/official",
+            "exclude": true
+          },
+          {
+            "/": "/chiich",
+            "exclude": true
+          },
+          {
+            "/": "/element",
+            "exclude": true
+          },
+          {
+            "/": "/matrix",
+            "exclude": true
+          },
+          {
+            "/": "/www",
+            "exclude": true
+          },
+          {
+            "/": "/api",
+            "exclude": true
+          },
+          {
+            "/": "/login",
+            "exclude": true
+          },
+          {
+            "/": "/logout",
+            "exclude": true
+          },
+          {
+            "/": "/register",
+            "exclude": true
+          },
+          {
+            "/": "/signup",
+            "exclude": true
+          },
+          {
+            "/": "/signin",
+            "exclude": true
+          },
+          {
+            "/": "/account",
+            "exclude": true
+          },
+          {
+            "/": "/accounts",
+            "exclude": true
+          },
+          {
+            "/": "/settings",
+            "exclude": true
+          },
+          {
+            "/": "/profile",
+            "exclude": true
+          },
+          {
+            "/": "/user",
+            "exclude": true
+          },
+          {
+            "/": "/users",
+            "exclude": true
+          },
+          {
+            "/": "/username",
+            "exclude": true
+          },
+          {
+            "/": "/usernames",
+            "exclude": true
+          },
+          {
+            "/": "/invite",
+            "exclude": true
+          },
+          {
+            "/": "/invitations",
+            "exclude": true
+          },
+          {
+            "/": "/home",
+            "exclude": true
+          },
+          {
+            "/": "/app",
+            "exclude": true
+          },
+          {
+            "/": "/apps",
+            "exclude": true
+          },
+          {
+            "/": "/assets",
+            "exclude": true
+          },
+          {
+            "/": "/bundles",
+            "exclude": true
+          },
+          {
+            "/": "/config",
+            "exclude": true
+          },
+          {
+            "/": "/diagnostics",
+            "exclude": true
+          },
+          {
+            "/": "/health",
+            "exclude": true
+          },
+          {
+            "/": "/status",
+            "exclude": true
+          },
+          {
+            "/": "/static",
+            "exclude": true
+          },
+          {
+            "/": "/wellknown",
+            "exclude": true
+          },
+          {
+            "/": "/index",
+            "exclude": true
+          },
+          {
+            "/": "/shortlink",
+            "exclude": true
+          },
+          {
+            "/": "/*",
+            "comment": "One-segment public aliases; the app separately validates the registry alphabet and resolves the existing Matrix user."
+          }
+        ]
+      }
+    ]
+  }
+}

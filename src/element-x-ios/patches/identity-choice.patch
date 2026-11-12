@@ -1,0 +1,764 @@
+diff --git a/ElementX/Resources/Localizations/en.lproj/Untranslated.strings b/ElementX/Resources/Localizations/en.lproj/Untranslated.strings
+--- a/ElementX/Resources/Localizations/en.lproj/Untranslated.strings
++++ b/ElementX/Resources/Localizations/en.lproj/Untranslated.strings
+@@ -23,9 +23,10 @@
+ 
+ // CHIICH public usernames and invitations
+ "screen_chiich_identity_username" = "Username";
++"screen_chiich_identity_choose_username" = "Choose a username";
+ "screen_chiich_identity_my_link" = "My link";
+-"screen_chiich_identity_invite_friend" = "Invite a friend";
+-"screen_chiich_identity_username_hint" = "Use 3–24 letters or digits. Use either Latin or Cyrillic letters. Your old links will keep working.";
++"screen_chiich_identity_invite_friend" = "Invite";
++"screen_chiich_identity_username_hint" = "3–24 letters or digits. Latin or Cyrillic, without mixing.";
+ "screen_chiich_identity_refresh" = "Refresh username";
+ "screen_chiich_identity_opening" = "Opening profile…";
+ "screen_chiich_identity_invalid_username" = "Choose 3–24 Latin or Cyrillic letters and digits, without mixing alphabets. This name may be reserved.";
+diff --git a/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings b/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings
+--- a/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings
++++ b/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings
+@@ -14,9 +14,10 @@
+ 
+ // CHIICH public usernames and invitations
+ "screen_chiich_identity_username" = "Логин";
++"screen_chiich_identity_choose_username" = "Выберите логин";
+ "screen_chiich_identity_my_link" = "Моя ссылка";
+-"screen_chiich_identity_invite_friend" = "Пригласить друга";
+-"screen_chiich_identity_username_hint" = "От 3 до 24 букв или цифр. Используйте латиницу или кириллицу без смешивания. Старые ссылки продолжат работать.";
++"screen_chiich_identity_invite_friend" = "Пригласить";
++"screen_chiich_identity_username_hint" = "3–24 буквы или цифры. Латиница или кириллица, без смешивания.";
+ "screen_chiich_identity_refresh" = "Обновить логин";
+ "screen_chiich_identity_opening" = "Открываем профиль…";
+ "screen_chiich_identity_invalid_username" = "Выберите от 3 до 24 букв и цифр без смешивания латиницы и кириллицы. Это имя может быть зарезервировано.";
+diff --git a/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings b/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings
+--- a/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings
++++ b/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings
+@@ -14,9 +14,10 @@
+ 
+ // CHIICH public usernames and invitations
+ "screen_chiich_identity_username" = "用户名";
++"screen_chiich_identity_choose_username" = "选择用户名";
+ "screen_chiich_identity_my_link" = "我的链接";
+-"screen_chiich_identity_invite_friend" = "邀请朋友";
+-"screen_chiich_identity_username_hint" = "使用 3–24 个字母或数字。请使用拉丁字母或西里尔字母，不要混用。旧链接仍然有效。";
++"screen_chiich_identity_invite_friend" = "邀请";
++"screen_chiich_identity_username_hint" = "3–24 个字母或数字。拉丁字母或西里尔字母，不混用。";
+ "screen_chiich_identity_refresh" = "刷新用户名";
+ "screen_chiich_identity_opening" = "正在打开个人资料…";
+ "screen_chiich_identity_invalid_username" = "请选择 3–24 个字母和数字，不要混用拉丁字母和西里尔字母。此名称可能已被保留。";
+diff --git a/ElementX/Sources/Other/SwiftUI/CHIICHIdentitySettingsPreviews.swift b/ElementX/Sources/Other/SwiftUI/CHIICHIdentitySettingsPreviews.swift
+--- a/ElementX/Sources/Other/SwiftUI/CHIICHIdentitySettingsPreviews.swift
++++ b/ElementX/Sources/Other/SwiftUI/CHIICHIdentitySettingsPreviews.swift
+@@ -19,13 +19,22 @@
+         preview(model: .preview())
+             .environment(\.colorScheme, .dark)
+             .previewDisplayName("Graphite profile link")
++        preview(model: .preview(hasChosenUsername: false))
++            .previewDisplayName("Choose first username")
++        preview(model: .preview(editing: true, hasChosenUsername: false))
++            .previewDisplayName("First username editor")
++        preview(model: .preview(hasChosenUsername: false))
++            .environment(\.colorScheme, .dark)
++            .previewDisplayName("Graphite first username")
+     }
+ 
+     private static func preview(model: CHIICHIdentitySettingsModel) -> some View {
+         ElementNavigationStack {
+             Form {
+                 Section {
+-                    ListRow(label: .default(title: "Ivan", description: "@ivan:chat.chiich.one", icon: \.userProfile), kind: .label)
++                    ListRow(label: .default(title: "Ivan",
++                                            description: model.username?.value ?? L10n.screenChiichIdentityChooseUsername,
++                                            icon: \.userProfile), kind: .label)
+                 }
+                 CHIICHIdentitySettingsSection(model: model)
+             }
+diff --git a/ElementX/Sources/Other/SwiftUI/Views/AvatarHeaderView.swift b/ElementX/Sources/Other/SwiftUI/Views/AvatarHeaderView.swift
+--- a/ElementX/Sources/Other/SwiftUI/Views/AvatarHeaderView.swift
++++ b/ElementX/Sources/Other/SwiftUI/Views/AvatarHeaderView.swift
+@@ -105,15 +105,16 @@
+     }
+     
+     init(user: UserProfile,
++         userIdentifier: String? = nil,
+          isVerified: Bool,
+          avatarSize: Avatars.Size,
+          mediaProvider: MediaProviderProtocol? = nil,
+          onAvatarTap: ((URL) -> Void)? = nil,
+          @ViewBuilder footer: @escaping () -> Footer) {
+         avatarInfo = .user(user)
+-        title = user.displayName ?? user.id
++        title = user.displayName ?? userIdentifier ?? user.id
+         status = user.status
+-        subtitle = user.displayName == nil ? nil : user.id
++        subtitle = user.displayName == nil ? nil : userIdentifier ?? user.id
+         
+         self.avatarSize = avatarSize
+         self.mediaProvider = mediaProvider
+diff --git a/ElementX/Sources/Screens/Settings/SettingsScreen/CHIICHIdentitySettingsModel.swift b/ElementX/Sources/Screens/Settings/SettingsScreen/CHIICHIdentitySettingsModel.swift
+--- a/ElementX/Sources/Screens/Settings/SettingsScreen/CHIICHIdentitySettingsModel.swift
++++ b/ElementX/Sources/Screens/Settings/SettingsScreen/CHIICHIdentitySettingsModel.swift
+@@ -7,6 +7,7 @@
+ @Observable
+ final class CHIICHIdentitySettingsModel {
+     private(set) var username: CHIICHPublicUsername?
++    private(set) var hasLoaded = false
+     private(set) var isBusy = false
+     private(set) var isEditing = false
+     private(set) var needsReload = false
+@@ -20,13 +21,17 @@
+         service.isSessionCurrent && !needsReload ? username?.link : nil
+     }
+ 
++    var canBeginEditing: Bool {
++        hasLoaded && !isBusy && !needsReload && service.isSessionCurrent
++    }
++
+     var canSave: Bool {
+         guard isEditing, !isBusy, !needsReload, service.isSessionCurrent,
+-              let candidate = try? CHIICHPublicUsername(draft) else { return false }
++              let candidate = try? CHIICHPublicUsername(chosen: draft) else { return false }
+         return candidate != username
+     }
+ 
+-    var isDraftValid: Bool { (try? CHIICHPublicUsername(draft)) != nil }
++    var isDraftValid: Bool { (try? CHIICHPublicUsername(chosen: draft)) != nil }
+ 
+     init(service: CHIICHIdentityService, userIndicatorController: UserIndicatorControllerProtocol) {
+         self.service = service
+@@ -34,7 +39,7 @@
+     }
+ 
+     func loadIfNeeded() async {
+-        guard username == nil || needsReload else { return }
++        guard !hasLoaded || needsReload else { return }
+         await reload()
+     }
+ 
+@@ -48,7 +53,8 @@
+         switch result {
+         case .success(let confirmed):
+             username = confirmed
+-            if !isEditing { draft = confirmed.value }
++            hasLoaded = true
++            if !isEditing { draft = confirmed?.value ?? "" }
+             needsReload = false
+             error = nil
+         case .failure(let failure):
+@@ -57,8 +63,8 @@
+     }
+ 
+     func beginEditing() {
+-        guard !isBusy, let username, service.isSessionCurrent else { return }
+-        draft = username.value
++        guard canBeginEditing else { return }
++        draft = username?.value ?? ""
+         isEditing = true
+         error = nil
+     }
+@@ -71,7 +77,7 @@
+     }
+ 
+     func save() async {
+-        guard canSave, let candidate = try? CHIICHPublicUsername(draft) else { return }
++        guard canSave, let candidate = try? CHIICHPublicUsername(chosen: draft) else { return }
+         isBusy = true
+         error = nil
+         defer { isBusy = false }
+@@ -115,16 +121,19 @@
+ 
+     private func invalidateSession() {
+         username = nil
++        hasLoaded = false
+         draft = ""
+         isEditing = false
+         needsReload = true
+         error = .sessionChanged
+     }
+ 
+-    static func preview(editing: Bool = false, loading: Bool = false, failure: CHIICHIdentityError? = nil) -> CHIICHIdentitySettingsModel {
++    static func preview(editing: Bool = false, loading: Bool = false, failure: CHIICHIdentityError? = nil,
++                        hasChosenUsername: Bool = true) -> CHIICHIdentitySettingsModel {
+         let service = CHIICHIdentityService(request: { _ in .failure(failure ?? .unavailable) }, isSessionCurrent: { true })
+         let model = CHIICHIdentitySettingsModel(service: service, userIndicatorController: UserIndicatorControllerMock())
+-        model.username = loading ? nil : (try? CHIICHPublicUsername("ivan2026"))
++        model.username = loading || !hasChosenUsername ? nil : (try? CHIICHPublicUsername(chosen: "Ivan"))
++        model.hasLoaded = !loading
+         model.draft = model.username?.value ?? ""
+         model.isEditing = editing
+         model.isBusy = loading
+diff --git a/ElementX/Sources/Screens/Settings/SettingsScreen/View/CHIICHIdentitySettingsSection.swift b/ElementX/Sources/Screens/Settings/SettingsScreen/View/CHIICHIdentitySettingsSection.swift
+--- a/ElementX/Sources/Screens/Settings/SettingsScreen/View/CHIICHIdentitySettingsSection.swift
++++ b/ElementX/Sources/Screens/Settings/SettingsScreen/View/CHIICHIdentitySettingsSection.swift
+@@ -15,14 +15,14 @@
+                 editor
+             } else {
+                 ListRow(label: .default(title: L10n.screenChiichIdentityUsername,
+-                                        description: model.username?.value,
++                                        description: model.username?.value ?? L10n.screenChiichIdentityChooseUsername,
+                                         icon: \.userProfile),
+                         details: .isWaiting(model.isBusy),
+                         kind: .button {
+                             model.beginEditing()
+                             usernameFocused = true
+                         })
+-                        .disabled(model.isBusy || model.username == nil)
++                        .disabled(!model.canBeginEditing)
+                         .accessibilityIdentifier("chiich.identity.username")
+             }
+ 
+@@ -66,7 +66,7 @@
+                     .foregroundStyle(.compound.textCriticalPrimary)
+                     .compoundListSectionFooter()
+                     .accessibilityIdentifier("chiich.identity.error")
+-            } else if model.isEditing, !model.isDraftValid {
++            } else if model.isEditing, !model.draft.isEmpty, !model.isDraftValid {
+                 Text(L10n.screenChiichIdentityInvalidUsername)
+                     .foregroundStyle(.compound.textCriticalPrimary)
+                     .compoundListSectionFooter()
+diff --git a/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift b/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift
+--- a/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift
++++ b/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift
+@@ -72,7 +72,8 @@
+                                 .font(.compound.headingMD)
+                                 .foregroundColor(.compound.textPrimary)
+                             
+-                            Text(context.viewState.userProfile.id)
++                            Text(chiichIdentity.map { $0.username?.value ?? L10n.screenChiichIdentityChooseUsername }
++                                ?? context.viewState.userProfile.id)
+                                 .font(.compound.bodySM)
+                                 .foregroundColor(.compound.textSecondary)
+                         }
+diff --git a/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenModels.swift b/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenModels.swift
+--- a/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenModels.swift
++++ b/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenModels.swift
+@@ -23,6 +23,7 @@
+     var isIdentityKnown = false
+     var isVerified: Bool?
+     var permalink: URL?
++    var chiichPublicUsername: CHIICHPublicUsername?
+     var dmRoomID: String?
+     var isCallingEnabled = true
+     
+@@ -30,6 +31,11 @@
+     
+     var showVerifiedBadge: Bool {
+         isVerified == true // We purposely show the badge on your own account for consistency with Web.
++    }
++
++    var chiichDisplayUsername: String? {
++        guard isOwnUser, CHIICHIdentityRecipient.isOwnedUserID(userID) else { return nil }
++        return chiichPublicUsername?.value ?? L10n.screenChiichIdentityChooseUsername
+     }
+ }
+ 
+diff --git a/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenViewModel.swift b/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenViewModel.swift
+--- a/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenViewModel.swift
++++ b/ElementX/Sources/Screens/UserProfileScreen/UserProfileScreenViewModel.swift
+@@ -90,7 +90,17 @@
+         switch await profileResult {
+         case .success(let userProfile):
+             state.userProfile = userProfile
+-            state.permalink = (try? matrixToUserPermalink(userId: state.userID)).flatMap(URL.init(string:))
++            if state.isOwnUser, CHIICHIdentityRecipient.isOwnedUserID(state.userID) {
++                // Share only a confirmed chosen name; do not expose the account's generated identifier.
++                state.permalink = nil
++                if let identityService = CHIICHIdentityService(clientProxy: userSession.clientProxy),
++                   case .success(let username) = await identityService.current() {
++                    state.chiichPublicUsername = username
++                    state.permalink = username?.link
++                }
++            } else {
++                state.permalink = (try? matrixToUserPermalink(userId: state.userID)).flatMap(URL.init(string:))
++            }
+             
+             switch userSession.clientProxy.directRoomForUserID(userProfile.id) {
+             case .success(let roomID):
+diff --git a/ElementX/Sources/Screens/UserProfileScreen/View/UserProfileScreen.swift b/ElementX/Sources/Screens/UserProfileScreen/View/UserProfileScreen.swift
+--- a/ElementX/Sources/Screens/UserProfileScreen/View/UserProfileScreen.swift
++++ b/ElementX/Sources/Screens/UserProfileScreen/View/UserProfileScreen.swift
+@@ -37,6 +37,7 @@
+     private var headerSection: some View {
+         if let userProfile = context.viewState.userProfile {
+             AvatarHeaderView(user: userProfile,
++                             userIdentifier: context.viewState.chiichDisplayUsername,
+                              isVerified: context.viewState.showVerifiedBadge,
+                              avatarSize: .user(on: .memberDetails),
+                              mediaProvider: context.mediaProvider) { url in
+@@ -47,6 +48,7 @@
+             }
+         } else {
+             AvatarHeaderView(user: UserProfile(userID: context.viewState.userID),
++                             userIdentifier: context.viewState.chiichDisplayUsername,
+                              isVerified: context.viewState.showVerifiedBadge,
+                              avatarSize: .user(on: .memberDetails),
+                              mediaProvider: context.mediaProvider) { }
+diff --git a/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityModels.swift b/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityModels.swift
+--- a/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityModels.swift
++++ b/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityModels.swift
+@@ -9,9 +9,12 @@
+     case matrixUnknownToken(softLogout: Bool)
+ }
+ 
+-/// A mutable public alias, never a Matrix account identifier or a login credential.
++/// A mutable public name for an unchanged Matrix account. Authentication stays in the native SDK.
+ nonisolated struct CHIICHPublicUsername: Hashable, Sendable {
+     let value: String
++
++    /// Ownership is case-insensitive; a chosen name keeps the user's spelling.
++    var canonicalValue: String { value.lowercased(with: Locale(identifier: "en_US_POSIX")) }
+ 
+     static let reserved: Set<String> = Set("""
+     admin administrator administrators support help official chiich element matrix www api
+@@ -46,6 +49,16 @@
+             throw CHIICHIdentityError.invalidUsername
+         }
+         value = lowercased
++    }
++
++    /// New choices reject unsupported input instead of silently rewriting it.
++    /// The ordinary initializer remains compatible with existing invitation URLs.
++    init(chosen input: String) throws {
++        guard (3...24).contains(input.unicodeScalars.count), input.unicodeScalars.allSatisfy(Self.isAllowed) else {
++            throw CHIICHIdentityError.invalidUsername
++        }
++        _ = try Self(input)
++        value = input
+     }
+ 
+     static func fromInvitationURL(_ url: URL) -> Self? {
+@@ -86,7 +99,11 @@
+             throw CHIICHIdentityError.unavailable
+         }
+         components.path = "/_synapse/client/chiich/username"
+-        if case .resolve(let username) = self { components.path += "/\(username.value)" }
++        if case .resolve(let username) = self {
++            components.path += "/\(username.canonicalValue)"
++        } else {
++            components.queryItems = [URLQueryItem(name: "selection", value: "explicit")]
++        }
+         guard let url = components.url else { throw CHIICHIdentityError.unavailable }
+ 
+         var request = URLRequest(url: url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: 15)
+@@ -104,11 +121,28 @@
+ }
+ 
+ nonisolated struct CHIICHIdentityResponse: Decodable {
+-    let username: String
++    enum CodingKeys: String, CodingKey {
++        case username
++        case displayUsername = "display_username"
++    }
+ 
+-    func validated() throws -> CHIICHPublicUsername {
+-        let alias = try CHIICHPublicUsername(username)
+-        guard alias.value == username else { throw CHIICHIdentityError.invalidResponse }
++    let username: String?
++    let displayUsername: String?
++
++    init(from decoder: Decoder) throws {
++        let values = try decoder.container(keyedBy: CodingKeys.self)
++        guard values.contains(.username), values.contains(.displayUsername) else {
++            throw CHIICHIdentityError.invalidResponse
++        }
++        username = try values.decodeIfPresent(String.self, forKey: .username)
++        displayUsername = try values.decodeIfPresent(String.self, forKey: .displayUsername)
++    }
++
++    func validated() throws -> CHIICHPublicUsername? {
++        if username == nil, displayUsername == nil { return nil }
++        guard let username, let displayUsername else { throw CHIICHIdentityError.invalidResponse }
++        let alias = try CHIICHPublicUsername(chosen: displayUsername)
++        guard alias.canonicalValue == username else { throw CHIICHIdentityError.invalidResponse }
+         return alias
+     }
+ }
+@@ -123,7 +157,7 @@
+     let userID: String
+ 
+     func validated() throws -> Self {
+-        _ = try CHIICHIdentityResponse(username: username).validated()
++        guard try CHIICHPublicUsername(username).value == username else { throw CHIICHIdentityError.invalidResponse }
+         guard Self.isOwnedUserID(userID) else { throw CHIICHIdentityError.invalidResponse }
+         return self
+     }
+diff --git a/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityService.swift b/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityService.swift
+--- a/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityService.swift
++++ b/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityService.swift
+@@ -33,14 +33,18 @@
+         })
+     }
+ 
+-    func current() async -> Result<CHIICHPublicUsername, CHIICHIdentityError> {
++    func current() async -> Result<CHIICHPublicUsername?, CHIICHIdentityError> {
+         await username(for: .current)
+     }
+ 
+     func rename(to username: CHIICHPublicUsername) async -> Result<CHIICHPublicUsername, CHIICHIdentityError> {
+         let result = await self.username(for: .rename(username))
+-        if case .success(let confirmed) = result, confirmed != username { return .failure(.invalidResponse) }
+-        return result
++        switch result {
++        case .success(let confirmed):
++            guard let confirmed, confirmed == username else { return .failure(.invalidResponse) }
++            return .success(confirmed)
++        case .failure(let error): return .failure(error)
++        }
+     }
+ 
+     func resolve(_ username: CHIICHPublicUsername) async -> Result<CHIICHIdentityRecipient, CHIICHIdentityError> {
+@@ -57,7 +61,7 @@
+         }
+     }
+ 
+-    private func username(for payload: CHIICHIdentityRequest) async -> Result<CHIICHPublicUsername, CHIICHIdentityError> {
++    private func username(for payload: CHIICHIdentityRequest) async -> Result<CHIICHPublicUsername?, CHIICHIdentityError> {
+         guard isSessionCurrent, !Task.isCancelled else { return .failure(.sessionChanged) }
+         let result = await request(payload)
+         guard isSessionCurrent, !Task.isCancelled else { return .failure(.cancelled) }
+diff --git a/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityStrings.swift b/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityStrings.swift
+--- a/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityStrings.swift
++++ b/ElementX/Sources/Services/CHIICHIdentity/CHIICHIdentityStrings.swift
+@@ -4,6 +4,7 @@
+ // Match the released CHIICH strings' native locale fallback, including Russian and Chinese.
+ nonisolated extension L10n {
+     static var screenChiichIdentityUsername: String { tr("Untranslated", "screen_chiich_identity_username") }
++    static var screenChiichIdentityChooseUsername: String { tr("Untranslated", "screen_chiich_identity_choose_username") }
+     static var screenChiichIdentityMyLink: String { tr("Untranslated", "screen_chiich_identity_my_link") }
+     static var screenChiichIdentityInviteFriend: String { tr("Untranslated", "screen_chiich_identity_invite_friend") }
+     static var screenChiichIdentityUsernameHint: String { tr("Untranslated", "screen_chiich_identity_username_hint") }
+diff --git a/UnitTests/Sources/CHIICHIdentityRequestTests.swift b/UnitTests/Sources/CHIICHIdentityRequestTests.swift
+--- a/UnitTests/Sources/CHIICHIdentityRequestTests.swift
++++ b/UnitTests/Sources/CHIICHIdentityRequestTests.swift
+@@ -16,6 +16,21 @@
+         #expect(alias.link.query() == nil)
+     }
+ 
++    @Test(arguments: ["Ivan", "Иван", "Ёжик", "user12345678", "123"])
++    func chosenSpellingIsPreservedInTheShortLink(_ input: String) throws {
++        let alias = try CHIICHPublicUsername(chosen: input)
++        #expect(alias.value == input)
++        #expect(alias.canonicalValue == (try CHIICHPublicUsername(input)).value)
++        #expect(alias.link.path(percentEncoded: false) == "/" + input)
++        #expect(alias.link.query() == nil)
++        #expect(alias.displayLink == "chiich.one/" + input)
++    }
++
++    @Test(arguments: ["Ｅｖａ１２３", "Е\u{0308}жик", " Ivan", "Ivan ", "Ivan_Name", "ivаn", "admin", "ab"])
++    func newChoicesAreNeverSilentlyCleanedOrNormalised(_ input: String) {
++        #expect(throws: CHIICHIdentityError.self) { try CHIICHPublicUsername(chosen: input) }
++    }
++
+     @Test(arguments: ["ab", String(repeating: "a", count: 25), "ivan petrov", "ivan_petrov", "ivan-petrov", "\u{1F600}abc",
+                       "ivаn", "Straße", "аbc", "admin", "LOGIN", "Иван/123", "ivan%2Fbob", "ivan\n", "@ivan"])
+     func invalidNamesNeverReachTheServer(_ value: String) {
+@@ -27,6 +42,7 @@
+         let request = try CHIICHIdentityRequest.current.urlRequest(homeserver: origin)
+         #expect(request.httpMethod == "GET")
+         #expect(request.url?.path == "/_synapse/client/chiich/username")
++        #expect(request.url?.query() == "selection=explicit")
+         #expect(request.httpBody == nil)
+         #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
+     }
+@@ -40,17 +56,34 @@
+ 
+     @Test
+     func renameHasOnlyThePublicUsernameAndResolveHasNoBody() throws {
+-        let alias = try CHIICHPublicUsername("ИВАН2026")
++        let alias = try CHIICHPublicUsername(chosen: "ИВАН2026")
+         let rename = try CHIICHIdentityRequest.rename(alias).urlRequest(homeserver: "https://matrix.chiich.one")
+         let data = try #require(rename.httpBody)
+         let body = try #require(JSONSerialization.jsonObject(with: data) as? [String: String])
+-        #expect(body == ["username": "иван2026"])
++        #expect(body == ["username": "ИВАН2026"])
++        #expect(rename.url?.query() == "selection=explicit")
+         #expect(rename.httpMethod == "PUT")
+         #expect(rename.value(forHTTPHeaderField: "Content-Type") == "application/json")
+         let resolve = try CHIICHIdentityRequest.resolve(alias).urlRequest(homeserver: "https://matrix.chiich.one")
+         #expect(resolve.httpMethod == "GET")
+         #expect(resolve.url?.path(percentEncoded: false) == "/_synapse/client/chiich/username/иван2026")
+         #expect(resolve.httpBody == nil)
++        #expect(resolve.url?.query() == nil)
++    }
++
++    @Test
++    func explicitResponseSeparatesNoChoiceFromMissingOrMismatchedFields() throws {
++        func decode(_ json: String) throws -> CHIICHPublicUsername? {
++            try JSONDecoder().decode(CHIICHIdentityResponse.self, from: Data(json.utf8)).validated()
++        }
++        #expect(try decode(#"{"username":null,"display_username":null}"#) == nil)
++        #expect(try decode(#"{"username":"ivan","display_username":"Ivan"}"#)?.value == "Ivan")
++        for json in [#"{}"#, #"{"username":"user12345678"}"#, #"{"username":null}"#,
++                     #"{"username":"ivan","display_username":null}"#, #"{"username":null,"display_username":"Ivan"}"#,
++                     #"{"username":"other","display_username":"Ivan"}"#, #"{"username":"Ivan","display_username":"Ivan"}"#,
++                     #"{"username":"eva123","display_username":"Ｅｖａ１２３"}"#] {
++            #expect(throws: (any Error).self) { try decode(json) }
++        }
+     }
+ 
+     @Test
+diff --git a/UnitTests/Sources/CHIICHIdentitySettingsTests.swift b/UnitTests/Sources/CHIICHIdentitySettingsTests.swift
+--- a/UnitTests/Sources/CHIICHIdentitySettingsTests.swift
++++ b/UnitTests/Sources/CHIICHIdentitySettingsTests.swift
+@@ -29,13 +29,71 @@
+         fixture.model.beginEditing()
+         fixture.model.draft = "ИВАН2026"
+         await fixture.model.save()
+-        #expect(fixture.model.username?.value == "иван2026")
+-        #expect(fixture.model.shareURL?.path(percentEncoded: false) == "/иван2026")
++        #expect(fixture.model.username?.value == "ИВАН2026")
++        #expect(fixture.model.shareURL?.path(percentEncoded: false) == "/ИВАН2026")
+         #expect(!fixture.model.isEditing)
+-        #expect(fixture.requests == [.current, .rename(try CHIICHPublicUsername("иван2026"))])
+-    }
+-
+-    @Test(arguments: ["ab", "admin", "aБв", "ivan_name"])
++        #expect(fixture.requests == [.current, .rename(try CHIICHPublicUsername(chosen: "ИВАН2026"))])
++    }
++
++    @Test
++    func firstChoiceIsEditableWithoutAnAutomaticNameOrShareLink() async throws {
++        let fixture = Fixture()
++        fixture.currentName = nil
++        #expect(!fixture.model.canBeginEditing)
++        await fixture.model.loadIfNeeded()
++        await fixture.model.loadIfNeeded()
++        #expect(fixture.requests == [.current])
++        #expect(fixture.model.username == nil)
++        #expect(fixture.model.shareURL == nil)
++        #expect(fixture.model.canBeginEditing)
++        fixture.model.beginEditing()
++        #expect(fixture.model.draft.isEmpty)
++        #expect(!fixture.model.canSave)
++        fixture.model.draft = "Ivan"
++        #expect(fixture.model.canSave)
++        await fixture.model.save()
++        #expect(fixture.model.username?.value == "Ivan")
++        #expect(fixture.model.shareURL?.absoluteString == "https://chiich.one/Ivan")
++        #expect(fixture.requests == [.current, .rename(try CHIICHPublicUsername(chosen: "Ivan"))])
++    }
++
++    @Test
++    func firstChoiceConflictKeepsTheTypedNameWithoutAddingASuffix() async {
++        let fixture = Fixture()
++        fixture.currentName = nil
++        await fixture.model.loadIfNeeded()
++        fixture.model.beginEditing()
++        fixture.model.draft = "Ivan"
++        fixture.renameError = .conflict
++        await fixture.model.save()
++        #expect(fixture.model.username == nil)
++        #expect(fixture.model.shareURL == nil)
++        #expect(fixture.model.draft == "Ivan")
++        #expect(fixture.model.error == .conflict)
++        await fixture.model.reload()
++        #expect(fixture.model.draft == "Ivan")
++        fixture.model.draft = "Another"
++        fixture.renameError = nil
++        await fixture.model.save()
++        #expect(fixture.model.username?.value == "Another")
++    }
++
++    @Test
++    func caseOnlyEditCanBeSavedAndExactRetryIsDisabled() async {
++        let fixture = Fixture()
++        fixture.currentName = "Ivan"
++        await fixture.model.loadIfNeeded()
++        fixture.model.beginEditing()
++        #expect(!fixture.model.canSave)
++        fixture.model.draft = "IVAN"
++        #expect(fixture.model.canSave)
++        await fixture.model.save()
++        #expect(fixture.model.username?.value == "IVAN")
++        fixture.model.beginEditing()
++        #expect(!fixture.model.canSave)
++    }
++
++    @Test(arguments: ["ab", "admin", "aБв", "ivan_name", " Ivan", "Ivan ", "Ｅｖａ１２３", "Е\u{0308}жик"])
+     func invalidEditsCannotSendARename(_ name: String) async {
+         let fixture = Fixture()
+         await fixture.model.loadIfNeeded()
+@@ -99,7 +157,7 @@
+         await fixture.model.save()
+         #expect(fixture.requests.count == 2)
+         fixture.sessionCurrent = false
+-        fixture.resumeRename(.success(Data(#"{"username":"newname"}"#.utf8)))
++        fixture.resumeRename(.success(Data(#"{"username":"newname","display_username":"newname"}"#.utf8)))
+         await saving.value
+         #expect(fixture.model.username == nil)
+         #expect(fixture.model.shareURL == nil)
+@@ -117,7 +175,7 @@
+         let saving = Task { await fixture.model.save() }
+         try await started.fulfill()
+         saving.cancel()
+-        fixture.resumeRename(.success(Data(#"{"username":"newname"}"#.utf8)))
++        fixture.resumeRename(.success(Data(#"{"username":"newname","display_username":"newname"}"#.utf8)))
+         await saving.value
+         #expect(fixture.model.username?.value == "oldname")
+         #expect(fixture.model.needsReload)
+@@ -129,7 +187,7 @@
+     func nativeServicePinsAccountDeviceAndHomeserver() async throws {
+         let client = ClientProxyMock(.init(homeserver: "https://matrix.chiich.one", userID: "@alice:chat.chiich.one", deviceID: "ONE"))
+         client.chiichReceiverAIIsSessionActive = true
+-        client.chiichIdentityRequestAccountIDReturnValue = .success(Data(#"{"username":"alice"}"#.utf8))
++        client.chiichIdentityRequestAccountIDReturnValue = .success(Data(#"{"username":"alice","display_username":"alice"}"#.utf8))
+         let service = try #require(CHIICHIdentityService(clientProxy: client))
+         _ = await service.current()
+         #expect(client.chiichIdentityRequestAccountIDCallsCount == 1)
+@@ -139,19 +197,32 @@
+         #expect(client.chiichIdentityRequestAccountIDCallsCount == 1)
+     }
+ 
+-    @Test
+-    func invalidSuccessfulReplyIsNotDisplayedOrShared() async throws {
+-        let service = CHIICHIdentityService(request: { _ in .success(Data(#"{"username":"@technical:chat.chiich.one"}"#.utf8)) },
++    @Test(arguments: [#"{"username":"@technical:chat.chiich.one"}"#, #"{"username":"user12345678"}"#,
++                      #"{"username":"ivan","display_username":"Other"}"#])
++    func invalidSuccessfulReplyIsNotDisplayedOrShared(_ response: String) async throws {
++        let service = CHIICHIdentityService(request: { _ in .success(Data(response.utf8)) },
+                                             isSessionCurrent: { true })
+         let model = CHIICHIdentitySettingsModel(service: service, userIndicatorController: UserIndicatorControllerMock())
+         await model.reload()
+         #expect(model.username == nil)
+         #expect(model.shareURL == nil)
++        #expect(!model.canBeginEditing)
+         #expect(model.error == .invalidResponse)
+     }
+ 
++    @Test
++    func successfulMutationMustConfirmTheExactSpelling() async throws {
++        let requested = try CHIICHPublicUsername(chosen: "Ivan")
++        for response in [#"{"username":null,"display_username":null}"#,
++                         #"{"username":"ivan","display_username":"ivan"}"#,
++                         #"{"username":"other","display_username":"Other"}"#] {
++            let service = CHIICHIdentityService(request: { _ in .success(Data(response.utf8)) }, isSessionCurrent: { true })
++            #expect(await service.rename(to: requested) == .failure(.invalidResponse))
++        }
++    }
++
+     private final class Fixture {
+-        var currentName = "oldname"
++        var currentName: String? = "oldname"
+         var renameError: CHIICHIdentityError?
+         var sessionCurrent = true
+         var requests: [CHIICHIdentityRequest] = []
+@@ -173,7 +244,7 @@
+             requests.append(request)
+             switch request {
+             case .current:
+-                return .success(Data("{\"username\":\"\(currentName)\"}".utf8))
++                return .success(currentResponse())
+             case .rename(let name):
+                 if holdRename {
+                     return await withCheckedContinuation { continuation in
+@@ -183,10 +254,15 @@
+                 }
+                 if let renameError { return .failure(renameError) }
+                 currentName = name.value
+-                return .success(Data("{\"username\":\"\(currentName)\"}".utf8))
++                return .success(currentResponse())
+             case .resolve:
+                 return .failure(.notFound)
+             }
+         }
++
++        private func currentResponse() -> Data {
++            guard let currentName else { return Data(#"{"username":null,"display_username":null}"#.utf8) }
++            return Data("{\"username\":\"\(currentName.lowercased())\",\"display_username\":\"\(currentName)\"}".utf8)
++        }
+     }
+ }
+diff --git a/UnitTests/Sources/UserProfileScreenViewModelTests.swift b/UnitTests/Sources/UserProfileScreenViewModelTests.swift
+--- a/UnitTests/Sources/UserProfileScreenViewModelTests.swift
++++ b/UnitTests/Sources/UserProfileScreenViewModelTests.swift
+@@ -7,6 +7,7 @@
+ //
+ 
+ @testable import ElementX
++import Foundation
+ import Testing
+ 
+ @MainActor
+@@ -56,6 +57,82 @@
+         #expect(context.viewState.userProfile == profile)
+         #expect(context.viewState.permalink != nil)
+     }
++
++    @Test
++    func chiichAccountOwnerSharesOnlyTheirConfirmedShortLink() async throws {
++        let client = ClientProxyMock(.init(homeserver: "https://matrix.chiich.one", userID: "@a__id123:chat.chiich.one", deviceID: "ONE"))
++        client.chiichReceiverAIIsSessionActive = true
++        client.profileForReturnValue = .success(UserProfile(userID: client.userID, displayName: "Ivan"))
++        client.userIdentityForFallBackToServerReturnValue = .success(UserIdentityProxyMock(.init(verificationState: .verified)))
++        client.chiichIdentityRequestAccountIDReturnValue = .success(Data(#"{"username":"ivan","display_username":"Ivan"}"#.utf8))
++        let viewModel = UserProfileScreenViewModel(userID: client.userID,
++                                                   isPresentedModally: false,
++                                                   userSession: UserSessionMock(.init(clientProxy: client)),
++                                                   analytics: AnalyticsServiceMock(.init()),
++                                                   userIndicatorController: UserIndicatorControllerMock())
++        let loaded = deferFulfillment(viewModel.context.observe(\.viewState.isVerified)) { $0 == true }
++        try await loaded.fulfill()
++        #expect(viewModel.context.viewState.permalink?.absoluteString == "https://chiich.one/Ivan")
++        #expect(viewModel.context.viewState.chiichDisplayUsername == "Ivan")
++        #expect(viewModel.context.viewState.userProfile?.id == client.userID)
++        #expect(client.chiichIdentityRequestAccountIDCallsCount == 1)
++    }
++
++    @Test(arguments: [#"{"username":null,"display_username":null}"#, #"{"username":"user12345678"}"#])
++    func unchosenOrLegacyResponseNeverSharesTheGeneratedAccountID(_ response: String) async throws {
++        let client = ClientProxyMock(.init(homeserver: "https://matrix.chiich.one", userID: "@a__id123:chat.chiich.one", deviceID: "ONE"))
++        client.chiichReceiverAIIsSessionActive = true
++        client.profileForReturnValue = .success(UserProfile(userID: client.userID, displayName: "Ivan"))
++        client.userIdentityForFallBackToServerReturnValue = .success(UserIdentityProxyMock(.init(verificationState: .verified)))
++        client.chiichIdentityRequestAccountIDReturnValue = .success(Data(response.utf8))
++        let viewModel = UserProfileScreenViewModel(userID: client.userID,
++                                                   isPresentedModally: false,
++                                                   userSession: UserSessionMock(.init(clientProxy: client)),
++                                                   analytics: AnalyticsServiceMock(.init()),
++                                                   userIndicatorController: UserIndicatorControllerMock())
++        let loaded = deferFulfillment(viewModel.context.observe(\.viewState.isVerified)) { $0 == true }
++        try await loaded.fulfill()
++        #expect(viewModel.context.viewState.permalink == nil)
++        #expect(viewModel.context.viewState.chiichDisplayUsername == L10n.screenChiichIdentityChooseUsername)
++        #expect(viewModel.context.viewState.userProfile?.id == client.userID)
++    }
++
++    @Test
++    func anotherPersonsProfileNeverUsesTheAccountOwnersAlias() async throws {
++        let client = ClientProxyMock(.init(homeserver: "https://matrix.chiich.one", userID: "@a__id123:chat.chiich.one", deviceID: "ONE"))
++        client.chiichReceiverAIIsSessionActive = true
++        let recipient = UserProfile(userID: "@other:chat.chiich.one", displayName: "Other")
++        client.profileForReturnValue = .success(recipient)
++        client.chiichIdentityRequestAccountIDReturnValue = .success(Data(#"{"username":"ivan","display_username":"Ivan"}"#.utf8))
++        let viewModel = UserProfileScreenViewModel(userID: recipient.id,
++                                                   isPresentedModally: false,
++                                                   userSession: UserSessionMock(.init(clientProxy: client)),
++                                                   analytics: AnalyticsServiceMock(.init()),
++                                                   userIndicatorController: UserIndicatorControllerMock())
++        let loaded = deferFulfillment(viewModel.context.observe(\.viewState.userProfile)) { $0 != nil }
++        try await loaded.fulfill()
++        #expect(viewModel.context.viewState.chiichDisplayUsername == nil)
++        #expect(viewModel.context.viewState.permalink?.host() == "matrix.to")
++        #expect(client.chiichIdentityRequestAccountIDCallsCount == 0)
++    }
++
++    @Test
++    func unavailableOwnedIdentityServiceDoesNotFallBackToSharingTheAccountID() async throws {
++        let client = ClientProxyMock(.init(homeserver: "https://unsupported.invalid", userID: "@a__id123:chat.chiich.one", deviceID: "ONE"))
++        client.chiichReceiverAIIsSessionActive = true
++        client.profileForReturnValue = .success(UserProfile(userID: client.userID, displayName: "Ivan"))
++        client.userIdentityForFallBackToServerReturnValue = .success(UserIdentityProxyMock(.init(verificationState: .verified)))
++        let viewModel = UserProfileScreenViewModel(userID: client.userID,
++                                                   isPresentedModally: false,
++                                                   userSession: UserSessionMock(.init(clientProxy: client)),
++                                                   analytics: AnalyticsServiceMock(.init()),
++                                                   userIndicatorController: UserIndicatorControllerMock())
++        let loaded = deferFulfillment(viewModel.context.observe(\.viewState.isVerified)) { $0 == true }
++        try await loaded.fulfill()
++        #expect(viewModel.context.viewState.permalink == nil)
++        #expect(viewModel.context.viewState.chiichDisplayUsername == L10n.screenChiichIdentityChooseUsername)
++        #expect(client.chiichIdentityRequestAccountIDCallsCount == 0)
++    }
+     
+     @Test
+     func startingDmWithUnknownUserFetchesIdentity() async throws {

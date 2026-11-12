@@ -1,0 +1,2008 @@
+{
+  "schema_version": 1,
+  "application_source": {
+    "repo": "CC-P2/chiich",
+    "ref": "3dc8d5676d43c68664aa0d0ed0410e9cdd0547ab",
+    "build": "1.0.0 (10)",
+    "workflowRun": 42821345748
+  },
+  "purpose": "Pinned dependency source archives for CHIICH iOS 1.0.0 build 10",
+  "archive_type": "GitHub source archive at an exact Git commit; build scripts, lockfiles and license notices retained",
+  "limitations": [
+    "Archives may contain Git LFS pointers, listed per archive. Registry packages referenced by Cargo/npm lockfiles are not vendored.",
+    "No dependency build was executed as part of archive download.",
+    "License markers are inventory evidence, not a legal-compliance determination.",
+    "swift-command-line-tools is external-only because a repository-wide redistribution license was not established; the original source URL and exact revision are retained."
+  ],
+  "dependencies": [
+    {
+      "repository": "https://github.com/a7ex/xcresultparser",
+      "repository_full_name": "a7ex/xcresultparser",
+      "revision": "95ca65d0bd56250ccd16331f5b0480a1a2c0c5e9",
+      "source_url": "https://codeload.github.com/a7ex/xcresultparser/tar.gz/95ca65d0bd56250ccd16331f5b0480a1a2c0c5e9",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "xcresultparser",
+          "lockfiles": [
+            "Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "2.2.0"
+      ],
+      "archive": "a7ex--xcresultparser--95ca65d0bd56250ccd16331f5b0480a1a2c0c5e9.tar.gz",
+      "sha256": "cb5a60d2c7c0b123a6e7b368ae643ce80b2217b9340935b47082f8b2eed4417c",
+      "bytes": 54836049,
+      "members": 2557,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1071
+        },
+        {
+          "path": "LICENSE.XcodeCoverageConverter.txt",
+          "bytes": 1076
+        }
+      ],
+      "lockfiles": [
+        ".swiftpm/configuration/Package.resolved",
+        "Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/apple/swift-algorithms",
+      "repository_full_name": "apple/swift-algorithms",
+      "revision": "87e50f483c54e6efd60e885f7f5aa946cee68023",
+      "source_url": "https://codeload.github.com/apple/swift-algorithms/tar.gz/87e50f483c54e6efd60e885f7f5aa946cee68023",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-algorithms",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.2.1"
+      ],
+      "archive": "apple--swift-algorithms--87e50f483c54e6efd60e885f7f5aa946cee68023.tar.gz",
+      "sha256": "57f7faed9c572b7517bac082eed28f48653d49e0b86e1cdd239602a09112e8fe",
+      "bytes": 256600,
+      "members": 137,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11751
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/apple/swift-argument-parser",
+      "repository_full_name": "apple/swift-argument-parser",
+      "revision": "6a52f3251125d74daf04fcbd5e6f08a75d074382",
+      "source_url": "https://codeload.github.com/apple/swift-argument-parser/tar.gz/6a52f3251125d74daf04fcbd5e6f08a75d074382",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-argument-parser",
+          "lockfiles": [
+            "Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.8.2"
+      ],
+      "archive": "apple--swift-argument-parser--6a52f3251125d74daf04fcbd5e6f08a75d074382.tar.gz",
+      "sha256": "23ab82e8be3b82b199a008e0044229ae327a8824734d917b78bcdde64ce81ec1",
+      "bytes": 709575,
+      "members": 327,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11751
+        },
+        {
+          "path": "Tools/generate-manual/DSL/Authors.swift",
+          "bytes": 1325
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/apple/swift-async-algorithms",
+      "repository_full_name": "apple/swift-async-algorithms",
+      "revision": "789dcf1f3d3f00251482f40a432ab7144c181987",
+      "source_url": "https://codeload.github.com/apple/swift-async-algorithms/tar.gz/789dcf1f3d3f00251482f40a432ab7144c181987",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-async-algorithms",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.1.6"
+      ],
+      "archive": "apple--swift-async-algorithms--789dcf1f3d3f00251482f40a432ab7144c181987.tar.gz",
+      "sha256": "136743ebeb18e26f4d82b59e99f6c9d2082475c588a96ab3f58ce4a3cd022cd6",
+      "bytes": 245851,
+      "members": 251,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11751
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/apple/swift-collections",
+      "repository_full_name": "apple/swift-collections",
+      "revision": "98ef3c98609a1e31b7e157b5b619579001a789d6",
+      "source_url": "https://codeload.github.com/apple/swift-collections/tar.gz/98ef3c98609a1e31b7e157b5b619579001a789d6",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-collections",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.7.1"
+      ],
+      "archive": "apple--swift-collections--98ef3c98609a1e31b7e157b5b619579001a789d6.tar.gz",
+      "sha256": "a014de9ee8a74d4626ddce15658adefdb5db4c1151c032e1e1ea58d30834e597",
+      "bytes": 5935610,
+      "members": 1025,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11751
+        }
+      ],
+      "lockfiles": [
+        "Benchmarks/Package.resolved",
+        "Utils/swift-collections.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/apple/swift-log",
+      "repository_full_name": "apple/swift-log",
+      "revision": "bbd81b6725ae874c69e9b8c8804d462356b55523",
+      "source_url": "https://codeload.github.com/apple/swift-log/tar.gz/bbd81b6725ae874c69e9b8c8804d462356b55523",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-log",
+          "lockfiles": [
+            "Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.10.1"
+      ],
+      "archive": "apple--swift-log--bbd81b6725ae874c69e9b8c8804d462356b55523.tar.gz",
+      "sha256": "cbf19ce1c0ede34d7b00302a1cde77195f98bd9a9a3fcc30afcf91aa6fdaf4b7",
+      "bytes": 70401,
+      "members": 111,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11358
+        },
+        {
+          "path": "NOTICE.txt",
+          "bytes": 1324
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/apple/swift-numerics",
+      "repository_full_name": "apple/swift-numerics",
+      "revision": "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+      "source_url": "https://codeload.github.com/apple/swift-numerics/tar.gz/0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-numerics",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.1.1"
+      ],
+      "archive": "apple--swift-numerics--0c0290ff6b24942dadb83a929ffaaa1481df04a2.tar.gz",
+      "sha256": "d245f3fb06086ad0ea493b40d0a1058f17529344b5fd52ca4a7f4271240810c8",
+      "bytes": 71180,
+      "members": 87,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11751
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/apple/swift-system",
+      "repository_full_name": "apple/swift-system",
+      "revision": "669763cfd5806a67e21972d7e5e2d6b80b1ea985",
+      "source_url": "https://codeload.github.com/apple/swift-system/tar.gz/669763cfd5806a67e21972d7e5e2d6b80b1ea985",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-system",
+          "lockfiles": [
+            "Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.6.5"
+      ],
+      "archive": "apple--swift-system--669763cfd5806a67e21972d7e5e2d6b80b1ea985.tar.gz",
+      "sha256": "3eccbfdf6462a77f311a6d68d6fea794ae947030d8ce5a009731941b2c5b5fdb",
+      "bytes": 117921,
+      "members": 99,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11750
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/Cocoanetics/DTCoreText",
+      "repository_full_name": "Cocoanetics/DTCoreText",
+      "revision": "b664664825da565b4c2b7a17dbe2369f68ae43d9",
+      "source_url": "https://codeload.github.com/Cocoanetics/DTCoreText/tar.gz/b664664825da565b4c2b7a17dbe2369f68ae43d9",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "dtcoretext",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.6.26"
+      ],
+      "archive": "Cocoanetics--DTCoreText--b664664825da565b4c2b7a17dbe2369f68ae43d9.tar.gz",
+      "sha256": "03d03d7f7df170e794a413a39227bae3cd4ced00220dd3f105c3fdc43ad51d7b",
+      "bytes": 2149224,
+      "members": 355,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1298
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/Cocoanetics/DTFoundation",
+      "repository_full_name": "Cocoanetics/DTFoundation",
+      "revision": "76062513434421cb6c8a1ae1d4f8368a7ebc2da3",
+      "source_url": "https://codeload.github.com/Cocoanetics/DTFoundation/tar.gz/76062513434421cb6c8a1ae1d4f8368a7ebc2da3",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "dtfoundation",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.7.18"
+      ],
+      "archive": "Cocoanetics--DTFoundation--76062513434421cb6c8a1ae1d4f8368a7ebc2da3.tar.gz",
+      "sha256": "da143188f095f82a930355be2c2e9b55c2e5f54dac1095d116ff5808e0e84b3d",
+      "bytes": 1244114,
+      "members": 454,
+      "license_markers": [
+        {
+          "path": "Documentation/LICENSE",
+          "bytes": 1295
+        },
+        {
+          "path": "LICENSE",
+          "bytes": 1298
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/devicekit/DeviceKit",
+      "repository_full_name": "devicekit/DeviceKit",
+      "revision": "19528aa07e1426626ea9fb2c4a161edf43c4f9e8",
+      "source_url": "https://codeload.github.com/devicekit/DeviceKit/tar.gz/19528aa07e1426626ea9fb2c4a161edf43c4f9e8",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "devicekit",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "5.9.0"
+      ],
+      "archive": "devicekit--DeviceKit--19528aa07e1426626ea9fb2c4a161edf43c4f9e8.tar.gz",
+      "sha256": "cc130d45ed85092657e14b39ecf5fa34f7430f0b9113ec367c295ff25301cda6",
+      "bytes": 76756,
+      "members": 50,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1059
+        }
+      ],
+      "lockfiles": [
+        "Gemfile.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/dmrschmidt/DSWaveformImage",
+      "repository_full_name": "dmrschmidt/DSWaveformImage",
+      "revision": "00afb7930863b9cc3bd011389d601735e548093c",
+      "source_url": "https://codeload.github.com/dmrschmidt/DSWaveformImage/tar.gz/00afb7930863b9cc3bd011389d601735e548093c",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "dswaveformimage",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "14.5.0"
+      ],
+      "archive": "dmrschmidt--DSWaveformImage--00afb7930863b9cc3bd011389d601735e548093c.tar.gz",
+      "sha256": "d70cbb1810bc7d487fff770e9936fe24fc0d336008fea9258ab02498c2bb2c02",
+      "bytes": 3715229,
+      "members": 134,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1081
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/async-compat",
+      "repository_full_name": "element-hq/async-compat",
+      "revision": "5a27c8b290f1f1dcfc0c4ec22c464e38528aa591",
+      "source_url": "https://codeload.github.com/element-hq/async-compat/tar.gz/5a27c8b290f1f1dcfc0c4ec22c464e38528aa591",
+      "reasons": [
+        {
+          "kind": "cargo-git-dependency",
+          "used_by": [
+            "sdk",
+            "rtc"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "element-hq--async-compat--5a27c8b290f1f1dcfc0c4ec22c464e38528aa591.tar.gz",
+      "sha256": "91baaa69cf58d7369e4243f315ffdb358d557acfccad4372037e6311dbac78c0",
+      "bytes": 11360,
+      "members": 14,
+      "license_markers": [
+        {
+          "path": "LICENSE-APACHE",
+          "bytes": 10847
+        },
+        {
+          "path": "LICENSE-MIT",
+          "bytes": 1023
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/compound-design-tokens",
+      "repository_full_name": "element-hq/compound-design-tokens",
+      "revision": "28b921601ac0ff49a572b6f18526d97bd14e5d91",
+      "source_url": "https://codeload.github.com/element-hq/compound-design-tokens/tar.gz/28b921601ac0ff49a572b6f18526d97bd14e5d91",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "compound-design-tokens",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+            "compound-ios/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "11.3.1"
+      ],
+      "archive": "element-hq--compound-design-tokens--28b921601ac0ff49a572b6f18526d97bd14e5d91.tar.gz",
+      "sha256": "c2b53c824558f8f96afe42da4196ca2886c4b6c70b51aa86c3d74f271416aa28",
+      "bytes": 552083,
+      "members": 2807,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 34523
+        },
+        {
+          "path": "LICENSE-COMMERCIAL",
+          "bytes": 256
+        }
+      ],
+      "lockfiles": [
+        "pnpm-lock.yaml"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/element-call",
+      "repository_full_name": "element-hq/element-call",
+      "revision": "9f7c35cd8f84b12f9395e6aac56fd396a3921482",
+      "source_url": "https://codeload.github.com/element-hq/element-call/tar.gz/9f7c35cd8f84b12f9395e6aac56fd396a3921482",
+      "reasons": [
+        {
+          "kind": "embedded-element-call-original-source",
+          "lockfile": "pnpm-lock.yaml"
+        }
+      ],
+      "versions": [
+        "v0.26.1"
+      ],
+      "archive": "element-hq--element-call--9f7c35cd8f84b12f9395e6aac56fd396a3921482.tar.gz",
+      "sha256": "8ce7c90ff7e6a02e2dba6228f5afe276400c863a1c12b40a38dd2277fb0e00ff",
+      "bytes": 6328204,
+      "members": 769,
+      "license_markers": [
+        {
+          "path": "LICENSE-AGPL-3.0",
+          "bytes": 34523
+        },
+        {
+          "path": "LICENSE-COMMERCIAL",
+          "bytes": 255
+        },
+        {
+          "path": "embedded/ios/LICENSE-AGPL-3.0",
+          "bytes": 34523
+        },
+        {
+          "path": "embedded/ios/LICENSE-COMMMERCIAL",
+          "bytes": 255
+        },
+        {
+          "path": "embedded/web/LICENSE-AGPL-3.0",
+          "bytes": 34523
+        },
+        {
+          "path": "embedded/web/LICENSE-COMMERCIAL",
+          "bytes": 255
+        },
+        {
+          "path": "src/sound/LICENCE.md",
+          "bytes": 536
+        }
+      ],
+      "lockfiles": [
+        "component/pnpm-lock.yaml",
+        "pnpm-lock.yaml"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/element-call-ios",
+      "repository_full_name": "element-hq/element-call-ios",
+      "revision": "d77b4ee326582083cabe53ffbd872a751c3cb989",
+      "source_url": "https://codeload.github.com/element-hq/element-call-ios/tar.gz/d77b4ee326582083cabe53ffbd872a751c3cb989",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "element-call-ios",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "0.1.0-rc.11"
+      ],
+      "archive": "element-hq--element-call-ios--d77b4ee326582083cabe53ffbd872a751c3cb989.tar.gz",
+      "sha256": "29d3da98b292e6f663d596103109cf1be346d2c61bbf573eebc68c93238a3845",
+      "bytes": 10716893,
+      "members": 404,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 34523
+        },
+        {
+          "path": "LICENSE-COMMERCIAL",
+          "bytes": 256
+        }
+      ],
+      "lockfiles": [
+        "Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/element-call-swift",
+      "repository_full_name": "element-hq/element-call-swift",
+      "revision": "befb5d37a7859ad38cf83719cbfd4abaffa04d82",
+      "source_url": "https://codeload.github.com/element-hq/element-call-swift/tar.gz/befb5d37a7859ad38cf83719cbfd4abaffa04d82",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "element-call-swift",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "0.26.1"
+      ],
+      "archive": "element-hq--element-call-swift--befb5d37a7859ad38cf83719cbfd4abaffa04d82.tar.gz",
+      "sha256": "e8223cec4a7ba554c8815450f36404ff08ca276e4a2f37f67783bce353f260f3",
+      "bytes": 13222692,
+      "members": 168,
+      "license_markers": [
+        {
+          "path": "LICENSE-AGPL-3.0",
+          "bytes": 34523
+        },
+        {
+          "path": "LICENSE-COMMMERCIAL",
+          "bytes": 255
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/matrix-rich-text-editor",
+      "repository_full_name": "element-hq/matrix-rich-text-editor",
+      "revision": "81735076261fc9c2be2e60a888e66cf5b603ee6f",
+      "source_url": "https://codeload.github.com/element-hq/matrix-rich-text-editor/tar.gz/81735076261fc9c2be2e60a888e66cf5b603ee6f",
+      "reasons": [
+        {
+          "kind": "binary-package-original-source",
+          "wrapper": {
+            "repo": "element-hq/matrix-rich-text-editor-swift",
+            "sha": "56077711bf495db926ec3f3efd36ed127fb9ceb1",
+            "version": "2.42.1"
+          },
+          "evidence": "https://github.com/element-hq/matrix-rich-text-editor-swift/releases/tag/2.42.1",
+          "build_files": [
+            "build_xcframework.sh",
+            "Makefile",
+            "platforms/ios/tools/",
+            "rust-toolchain.toml",
+            "Cargo.lock"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "element-hq--matrix-rich-text-editor--81735076261fc9c2be2e60a888e66cf5b603ee6f.tar.gz",
+      "sha256": "9dc8ff90444969da7ab5d361dd89d59d4616e05126f50741e7332b5a2167255b",
+      "bytes": 877849,
+      "members": 889,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 34523
+        },
+        {
+          "path": "LICENSE-COMMERCIAL",
+          "bytes": 254
+        }
+      ],
+      "lockfiles": [
+        "Cargo.lock",
+        "bindings/wysiwyg-wasm/yarn.lock",
+        "platforms/ios/example/Wysiwyg.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+        "platforms/ios/lib/WysiwygComposer/Package.resolved",
+        "platforms/ios/tools/release/Package.resolved",
+        "platforms/web/example-wysiwyg/yarn.lock",
+        "platforms/web/yarn.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/matrix-rich-text-editor-swift",
+      "repository_full_name": "element-hq/matrix-rich-text-editor-swift",
+      "revision": "56077711bf495db926ec3f3efd36ed127fb9ceb1",
+      "source_url": "https://codeload.github.com/element-hq/matrix-rich-text-editor-swift/tar.gz/56077711bf495db926ec3f3efd36ed127fb9ceb1",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "matrix-rich-text-editor-swift",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "2.42.1"
+      ],
+      "archive": "element-hq--matrix-rich-text-editor-swift--56077711bf495db926ec3f3efd36ed127fb9ceb1.tar.gz",
+      "sha256": "b4e312659e5dcb23150e96b7f49748b7350a27ca47b6e1e904d761a18f76abdd",
+      "bytes": 54948,
+      "members": 64,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 34523
+        },
+        {
+          "path": "LICENSE-COMMERCIAL",
+          "bytes": 254
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/matrix-rust-components-swift",
+      "repository_full_name": "element-hq/matrix-rust-components-swift",
+      "revision": "d7bce2b7666c0b2fe06a29222f28c07467f84f72",
+      "source_url": "https://codeload.github.com/element-hq/matrix-rust-components-swift/tar.gz/d7bce2b7666c0b2fe06a29222f28c07467f84f72",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "matrix-rust-components-swift",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "26.10.24"
+      ],
+      "archive": "element-hq--matrix-rust-components-swift--d7bce2b7666c0b2fe06a29222f28c07467f84f72.tar.gz",
+      "sha256": "807ffeba3653850d7f2bd87473a06326d77a0e31a79eb6cbac1ca074a2946b39",
+      "bytes": 276126,
+      "members": 28,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 11358
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/matrix-rust-rtc",
+      "repository_full_name": "element-hq/matrix-rust-rtc",
+      "revision": "c7a81b6742dc5e571b90b05f5109677384efb933",
+      "source_url": "https://codeload.github.com/element-hq/matrix-rust-rtc/tar.gz/c7a81b6742dc5e571b90b05f5109677384efb933",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "matrix-rust-rtc",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        },
+        {
+          "kind": "binary-package-original-source",
+          "wrapper": {
+            "repo": "element-hq/matrix-rust-rtc",
+            "sha": "c7a81b6742dc5e571b90b05f5109677384efb933",
+            "version": "0.5.0-rc.5"
+          },
+          "evidence": "https://github.com/element-hq/matrix-rust-rtc/releases/tag/v0.5.0-rc.5",
+          "build_files": [
+            "scripts/build-ios-xcframework.sh",
+            "mobile/PACKAGING.md",
+            "mobile/ios/Debug-Package.swift",
+            ".github/workflows/release.yml",
+            "Cargo.lock"
+          ]
+        }
+      ],
+      "versions": [
+        "0.5.0-rc.5"
+      ],
+      "archive": "element-hq--matrix-rust-rtc--c7a81b6742dc5e571b90b05f5109677384efb933.tar.gz",
+      "sha256": "7fbd45c23956f3b648b36d16fd3670ac0e37156500ac0a64c3f2e327b320ac4b",
+      "bytes": 899876,
+      "members": 308,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 34523
+        },
+        {
+          "path": "LICENSE-COMMERCIAL",
+          "bytes": 256
+        }
+      ],
+      "lockfiles": [
+        "Cargo.lock",
+        "interop/package-lock.json",
+        "web/demo/package-lock.json",
+        "web/package-lock.json"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/element-hq/swift-command-line-tools",
+      "repository_full_name": "element-hq/swift-command-line-tools",
+      "revision": "e1e7939200f47bc3ee7c468076077a5d6ceaa364",
+      "source_url": "https://codeload.github.com/element-hq/swift-command-line-tools/tar.gz/e1e7939200f47bc3ee7c468076077a5d6ceaa364",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-command-line-tools",
+          "lockfiles": [
+            "Package.resolved"
+          ]
+        }
+      ],
+      "versions": [],
+      "members": 22,
+      "license_markers": [],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "external-only-license-unverified",
+      "license_notes": [
+        "No repository-wide LICENSE file present at this pin or current upstream default branch during audit.",
+        "Sources/CommandLineTools/Netrc.swift contains Apache License v2.0 with Runtime Library Exception notice; this is a file-level notice, not evidence for all files.",
+        "Referenced by the root Tools Swift package, not the production ElementX app target."
+      ],
+      "upstream_archive_sha256": "97a44e488abc6fa2c351189bffe966afda955c4972a8e6de6fe835c31fcd30ee",
+      "upstream_archive_bytes": 9077,
+      "reason": "No repository-wide redistribution license was established from this exact source tree, current README/Package.swift, or GitHub repository metadata (license=null; not a fork). Only Netrc.swift has an Apache-2.0-with-Runtime-Library-Exception header. Build-tool source is linked externally and its archive is not redistributed."
+    },
+    {
+      "repository": "https://github.com/element-hq/swift-ogg",
+      "repository_full_name": "element-hq/swift-ogg",
+      "revision": "a00a22b90f6230d2d3a75a18adef97a3603d9d28",
+      "source_url": "https://codeload.github.com/element-hq/swift-ogg/tar.gz/a00a22b90f6230d2d3a75a18adef97a3603d9d28",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-ogg",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "0.0.4"
+      ],
+      "archive": "element-hq--swift-ogg--a00a22b90f6230d2d3a75a18adef97a3603d9d28.tar.gz",
+      "sha256": "dcc3dfbc6b9631bcf2c32b462486776de7284eee62522a6b1570e8c0343fa64c",
+      "bytes": 1583113,
+      "members": 53,
+      "license_markers": [
+        {
+          "path": "LICENCE",
+          "bytes": 11357
+        }
+      ],
+      "lockfiles": [
+        "Sample.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/getsentry/sentry-cocoa",
+      "repository_full_name": "getsentry/sentry-cocoa",
+      "revision": "8689e780a295dfdc6501ac0dbb502461e16d6551",
+      "source_url": "https://codeload.github.com/getsentry/sentry-cocoa/tar.gz/8689e780a295dfdc6501ac0dbb502461e16d6551",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "sentry-cocoa",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "9.29.2"
+      ],
+      "archive": "getsentry--sentry-cocoa--8689e780a295dfdc6501ac0dbb502461e16d6551.tar.gz",
+      "sha256": "7969f33d6ebf1040dddc78b0956d76eeb116001298defe9579e5409fd1babda8",
+      "bytes": 11222837,
+      "members": 3228,
+      "license_markers": [
+        {
+          "path": "LICENSE.md",
+          "bytes": 1073
+        },
+        {
+          "path": "distribution/apple-binaries/LICENSE.md",
+          "bytes": 1073
+        }
+      ],
+      "lockfiles": [
+        "Gemfile.lock",
+        "scripts/analyze-languages/Gemfile.lock",
+        "test-server/Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/guoyingtao/Mantis",
+      "repository_full_name": "guoyingtao/Mantis",
+      "revision": "0960be1feed2e62f62a5fddbb8d72b26008db881",
+      "source_url": "https://codeload.github.com/guoyingtao/Mantis/tar.gz/0960be1feed2e62f62a5fddbb8d72b26008db881",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "mantis",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "3.1.0"
+      ],
+      "archive": "guoyingtao--Mantis--0960be1feed2e62f62a5fddbb8d72b26008db881.tar.gz",
+      "sha256": "02aa497b57415f8fcc48a68421dd85d5268c2dacdbbd69170b13646c17de09fc",
+      "bytes": 69929680,
+      "members": 353,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1068
+        }
+      ],
+      "lockfiles": [
+        "SwiftUIExample/Podfile.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/jplatte/const_panic",
+      "repository_full_name": "jplatte/const_panic",
+      "revision": "e0b317a9a7bde2d48a7d15b6a60d70e4a41d3b5f",
+      "source_url": "https://codeload.github.com/jplatte/const_panic/tar.gz/e0b317a9a7bde2d48a7d15b6a60d70e4a41d3b5f",
+      "reasons": [
+        {
+          "kind": "cargo-git-dependency",
+          "used_by": [
+            "sdk",
+            "rtc"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "jplatte--const_panic--e0b317a9a7bde2d48a7d15b6a60d70e4a41d3b5f.tar.gz",
+      "sha256": "ff186e29cc3f215487e86cf74132d200547438f72f7264b34b62818e7130f7e7",
+      "bytes": 78086,
+      "members": 100,
+      "license_markers": [
+        {
+          "path": "LICENSE-ZLIB.md",
+          "bytes": 855
+        },
+        {
+          "path": "const_panic_proc_macros/LICENSE-ZLIB.md",
+          "bytes": 855
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/jpsim/Yams",
+      "repository_full_name": "jpsim/Yams",
+      "revision": "a27b21e0c81c5bf42049b897a62aaf387e80f279",
+      "source_url": "https://codeload.github.com/jpsim/Yams/tar.gz/a27b21e0c81c5bf42049b897a62aaf387e80f279",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "yams",
+          "lockfiles": [
+            "Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "6.2.2"
+      ],
+      "archive": "jpsim--Yams--a27b21e0c81c5bf42049b897a62aaf387e80f279.tar.gz",
+      "sha256": "e23de46509bdb3673117b5af1981b4a04e06345a53abb3fec92b7e96c746c6de",
+      "bytes": 681233,
+      "members": 125,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1077
+        }
+      ],
+      "lockfiles": [
+        "Gemfile.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/kishikawakatsumi/KeychainAccess",
+      "repository_full_name": "kishikawakatsumi/KeychainAccess",
+      "revision": "84e546727d66f1adc5439debad16270d0fdd04e7",
+      "source_url": "https://codeload.github.com/kishikawakatsumi/KeychainAccess/tar.gz/84e546727d66f1adc5439debad16270d0fdd04e7",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "keychainaccess",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "4.2.2"
+      ],
+      "archive": "kishikawakatsumi--KeychainAccess--84e546727d66f1adc5439debad16270d0fdd04e7.tar.gz",
+      "sha256": "585fd4c0f0e13faf84aa7d158665ad51cfa4bdb00737886cdb3fbedfb7a07f05",
+      "bytes": 636169,
+      "members": 108,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1085
+        }
+      ],
+      "lockfiles": [
+        "Lib/Gemfile.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/krzysztofzablocki/KZFileWatchers",
+      "repository_full_name": "krzysztofzablocki/KZFileWatchers",
+      "revision": "d27a9557427d261adccdf4b566acc9d9c0fec6f4",
+      "source_url": "https://codeload.github.com/krzysztofzablocki/KZFileWatchers/tar.gz/d27a9557427d261adccdf4b566acc9d9c0fec6f4",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "kzfilewatchers",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.2.0"
+      ],
+      "archive": "krzysztofzablocki--KZFileWatchers--d27a9557427d261adccdf4b566acc9d9c0fec6f4.tar.gz",
+      "sha256": "21e80c05b7ab7ca928be788bb491f41c959256e995556a3c10d930493f7f83be",
+      "bytes": 2087225,
+      "members": 295,
+      "license_markers": [
+        {
+          "path": "Example/Pods/Nimble/LICENSE",
+          "bytes": 11307
+        },
+        {
+          "path": "Example/Pods/OHHTTPStubs/LICENSE",
+          "bytes": 1076
+        },
+        {
+          "path": "Example/Pods/Quick/LICENSE",
+          "bytes": 11308
+        },
+        {
+          "path": "LICENSE",
+          "bytes": 1093
+        }
+      ],
+      "lockfiles": [
+        "Example/Podfile.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/lukaskubanek/LoremSwiftum",
+      "repository_full_name": "lukaskubanek/LoremSwiftum",
+      "revision": "a293c2339552c8cfb715e7f76c511feec02782ad",
+      "source_url": "https://codeload.github.com/lukaskubanek/LoremSwiftum/tar.gz/a293c2339552c8cfb715e7f76c511feec02782ad",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "loremswiftum",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "2.2.3"
+      ],
+      "archive": "lukaskubanek--LoremSwiftum--a293c2339552c8cfb715e7f76c511feec02782ad.tar.gz",
+      "sha256": "db19cb7409bd3ffe3fdcf8b0c99d9893c488873b922ba95b5193a62197536d3d",
+      "bytes": 12515,
+      "members": 30,
+      "license_markers": [
+        {
+          "path": "LICENSE.md",
+          "bytes": 1062
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/maplibre/maplibre-gl-native-distribution",
+      "repository_full_name": "maplibre/maplibre-gl-native-distribution",
+      "revision": "13e41ab3d77ff5113e7e5d4ee87803b1f81f5683",
+      "source_url": "https://codeload.github.com/maplibre/maplibre-gl-native-distribution/tar.gz/13e41ab3d77ff5113e7e5d4ee87803b1f81f5683",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "maplibre-gl-native-distribution",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "6.31.0"
+      ],
+      "archive": "maplibre--maplibre-gl-native-distribution--13e41ab3d77ff5113e7e5d4ee87803b1f81f5683.tar.gz",
+      "sha256": "ad2a687fd6769d8170723ed14977e7ade8d5338900eeedfa6360dae1da13dd0e",
+      "bytes": 4122,
+      "members": 13,
+      "license_markers": [
+        {
+          "path": "LICENSE.md",
+          "bytes": 1374
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/matrix-org/emojibase-bindings",
+      "repository_full_name": "matrix-org/emojibase-bindings",
+      "revision": "60bc01f2e3b31445dc723f5af1a777b63d18e6c2",
+      "source_url": "https://codeload.github.com/matrix-org/emojibase-bindings/tar.gz/60bc01f2e3b31445dc723f5af1a777b63d18e6c2",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "emojibase-bindings",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "matrix-org--emojibase-bindings--60bc01f2e3b31445dc723f5af1a777b63d18e6c2.tar.gz",
+      "sha256": "83fc8c0d05680ab76561dfaa61421ca6385d364fb280905e223aeac2700c374a",
+      "bytes": 262061,
+      "members": 80,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 11357
+        }
+      ],
+      "lockfiles": [
+        "yarn.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/matrix-org/matrix-analytics-events",
+      "repository_full_name": "matrix-org/matrix-analytics-events",
+      "revision": "7d668b3e4be493843805b8a1ff4e13b261a19965",
+      "source_url": "https://codeload.github.com/matrix-org/matrix-analytics-events/tar.gz/7d668b3e4be493843805b8a1ff4e13b261a19965",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "matrix-analytics-events",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "0.38.0"
+      ],
+      "archive": "matrix-org--matrix-analytics-events--7d668b3e4be493843805b8a1ff4e13b261a19965.tar.gz",
+      "sha256": "04ca6da16ead1d00a3673426d0e0688cb430ed73881fb05b81be997b24eea0d5",
+      "bytes": 150933,
+      "members": 176,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 11357
+        }
+      ],
+      "lockfiles": [
+        "yarn.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/matrix-org/matrix-rust-sdk",
+      "repository_full_name": "matrix-org/matrix-rust-sdk",
+      "revision": "8de215a0aa0026afa5754ae5f05a6d168d1a1d60",
+      "source_url": "https://codeload.github.com/matrix-org/matrix-rust-sdk/tar.gz/8de215a0aa0026afa5754ae5f05a6d168d1a1d60",
+      "reasons": [
+        {
+          "kind": "binary-package-original-source",
+          "wrapper": {
+            "repo": "element-hq/matrix-rust-components-swift",
+            "sha": "d7bce2b7666c0b2fe06a29222f28c07467f84f72",
+            "version": "26.10.24"
+          },
+          "evidence": "https://github.com/element-hq/matrix-rust-components-swift/releases/tag/26.10.24",
+          "build_files": [
+            "bindings/apple/README.md",
+            "xtask/src/swift.rs",
+            "Cargo.lock"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "matrix-org--matrix-rust-sdk--8de215a0aa0026afa5754ae5f05a6d168d1a1d60.tar.gz",
+      "sha256": "e170452f1964d10604202af5f52ac615c183a5be9bcb012a8dd54417444e98a8",
+      "bytes": 3966670,
+      "members": 1471,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 10174
+        }
+      ],
+      "lockfiles": [
+        "Cargo.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/matrix-org/matrix-rust-sdk",
+      "repository_full_name": "matrix-org/matrix-rust-sdk",
+      "revision": "c6ad52ecc09eaa36601f55effb0a48a533eb87dd",
+      "source_url": "https://codeload.github.com/matrix-org/matrix-rust-sdk/tar.gz/c6ad52ecc09eaa36601f55effb0a48a533eb87dd",
+      "reasons": [
+        {
+          "kind": "cargo-git-dependency",
+          "used_by": [
+            "rtc"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "matrix-org--matrix-rust-sdk--c6ad52ecc09eaa36601f55effb0a48a533eb87dd.tar.gz",
+      "sha256": "660be992a3b1a06c9888cec26b6944e0c4c7452189b86e9f093293c58860c6b0",
+      "bytes": 3876260,
+      "members": 1363,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 10174
+        }
+      ],
+      "lockfiles": [
+        "Cargo.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/mhdhejazi/Dynamic",
+      "repository_full_name": "mhdhejazi/Dynamic",
+      "revision": "ab9a2570862d54aed2663691bb767f881226a12f",
+      "source_url": "https://codeload.github.com/mhdhejazi/Dynamic/tar.gz/ab9a2570862d54aed2663691bb767f881226a12f",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "dynamic",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.2.0"
+      ],
+      "archive": "mhdhejazi--Dynamic--ab9a2570862d54aed2663691bb767f881226a12f.tar.gz",
+      "sha256": "1a5f404a051d6eb003442316e7cbe4b5c0e8dbef94c8edf425976aca9af90561",
+      "bytes": 15496,
+      "members": 26,
+      "license_markers": [],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive",
+      "license_supplement": {
+        "file": "license-supplements/Dynamic-Apache-2.0-upstream-7728830.txt",
+        "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+        "url": "https://raw.githubusercontent.com/mhdhejazi/Dynamic/772883073d044bc754d401cabb6574624eb3778f/LICENSE",
+        "source_commit": "772883073d044bc754d401cabb6574624eb3778f",
+        "note": "Original pinned archive remains unchanged. Its standalone license text is supplied separately from the authoritative upstream repository license commit 772883073d044bc754d401cabb6574624eb3778f (Apache License 2.0, added 2021-10-02). This supplement is not a modification of the pinned source. Dynamic is referenced by UnitTests, not the production ElementX target."
+      }
+    },
+    {
+      "repository": "https://github.com/mozilla/uniffi-rs",
+      "repository_full_name": "mozilla/uniffi-rs",
+      "revision": "990f4f8dc55df0fa7194ce68db6c616e6f9bdce6",
+      "source_url": "https://codeload.github.com/mozilla/uniffi-rs/tar.gz/990f4f8dc55df0fa7194ce68db6c616e6f9bdce6",
+      "reasons": [
+        {
+          "kind": "cargo-git-dependency",
+          "used_by": [
+            "rich-editor"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "mozilla--uniffi-rs--990f4f8dc55df0fa7194ce68db6c616e6f9bdce6.tar.gz",
+      "sha256": "e782848e1bb1aa8e8a3310781d3413769bbd046b863b94fb7e6daa757d5df475",
+      "bytes": 841386,
+      "members": 1465,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 16725
+        },
+        {
+          "path": "weedle2/LICENSE.md",
+          "bytes": 1092
+        }
+      ],
+      "lockfiles": [
+        "Cargo.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/mxcl/Version",
+      "repository_full_name": "mxcl/Version",
+      "revision": "3043fcd2a50375db76d89ff206a612471833d1c2",
+      "source_url": "https://codeload.github.com/mxcl/Version/tar.gz/3043fcd2a50375db76d89ff206a612471833d1c2",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "version",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "2.2.1"
+      ],
+      "archive": "mxcl--Version--3043fcd2a50375db76d89ff206a612471833d1c2.tar.gz",
+      "sha256": "a55aafb1e1709579c7370fe9b975ba530f9b1ed341fe7a0d5f838127dd7ff6e8",
+      "bytes": 12923,
+      "members": 19,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 11719
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/nicklockwood/GZIP",
+      "repository_full_name": "nicklockwood/GZIP",
+      "revision": "f710a37aa978a93b815a4f64bd504dc4c3256312",
+      "source_url": "https://codeload.github.com/nicklockwood/GZIP/tar.gz/f710a37aa978a93b815a4f64bd504dc4c3256312",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "gzip",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.3.2"
+      ],
+      "archive": "nicklockwood--GZIP--f710a37aa978a93b815a4f64bd504dc4c3256312.tar.gz",
+      "sha256": "96f3f6a3b71b797539483ca550a514b447672602e5e80cb475c5a89776857b78",
+      "bytes": 14937,
+      "members": 36,
+      "license_markers": [
+        {
+          "path": "LICENSE.md",
+          "bytes": 1070
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/nicklockwood/LRUCache",
+      "repository_full_name": "nicklockwood/LRUCache",
+      "revision": "f0570e943ea4445d258113ba73f50cb2b7e564ac",
+      "source_url": "https://codeload.github.com/nicklockwood/LRUCache/tar.gz/f0570e943ea4445d258113ba73f50cb2b7e564ac",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "lrucache",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.3.0"
+      ],
+      "archive": "nicklockwood--LRUCache--f0570e943ea4445d258113ba73f50cb2b7e564ac.tar.gz",
+      "sha256": "37c73577f963122fd520b540b9384dbe43da25bcc5df8b336e7abeb6baed3b68",
+      "bytes": 18821,
+      "members": 36,
+      "license_markers": [
+        {
+          "path": "LICENSE.md",
+          "bytes": 1070
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/onevcat/Kingfisher",
+      "repository_full_name": "onevcat/Kingfisher",
+      "revision": "8648fe649c5d62be38721110f835821906e9242a",
+      "source_url": "https://codeload.github.com/onevcat/Kingfisher/tar.gz/8648fe649c5d62be38721110f835821906e9242a",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "kingfisher",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "8.13.0"
+      ],
+      "archive": "onevcat--Kingfisher--8648fe649c5d62be38721110f835821906e9242a.tar.gz",
+      "sha256": "ffaecbca73b64142c328a3519123a872c7aa7c79da5ac4ced32cd3fc5be8c091",
+      "bytes": 1684761,
+      "members": 479,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1076
+        },
+        {
+          "path": "Tests/Dependency/Nocilla/LICENSE",
+          "bytes": 1072
+        }
+      ],
+      "lockfiles": [
+        "Gemfile.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/pointfreeco/swift-custom-dump",
+      "repository_full_name": "pointfreeco/swift-custom-dump",
+      "revision": "82645ec760917961cfa08c9c0c7104a57a0fa4b1",
+      "source_url": "https://codeload.github.com/pointfreeco/swift-custom-dump/tar.gz/82645ec760917961cfa08c9c0c7104a57a0fa4b1",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-custom-dump",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+            "compound-ios/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.3.3"
+      ],
+      "archive": "pointfreeco--swift-custom-dump--82645ec760917961cfa08c9c0c7104a57a0fa4b1.tar.gz",
+      "sha256": "de51b9af5d493abcf6659f8e4fb268003c405adc7da85357ee349815b999aada",
+      "bytes": 45988,
+      "members": 79,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1073
+        }
+      ],
+      "lockfiles": [
+        "CustomDump.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+        "Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/pointfreeco/swift-snapshot-testing",
+      "repository_full_name": "pointfreeco/swift-snapshot-testing",
+      "revision": "28e5de025e3fd98991791bfbf83023ab3708da03",
+      "source_url": "https://codeload.github.com/pointfreeco/swift-snapshot-testing/tar.gz/28e5de025e3fd98991791bfbf83023ab3708da03",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-snapshot-testing",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+            "compound-ios/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.19.6"
+      ],
+      "archive": "pointfreeco--swift-snapshot-testing--28e5de025e3fd98991791bfbf83023ab3708da03.tar.gz",
+      "sha256": "97a6c8dc9d5585c8803ad6ed577922ab1bd34084d307a623c4f290b051b7f5ef",
+      "bytes": 8560033,
+      "members": 349,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1073
+        }
+      ],
+      "lockfiles": [
+        "Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/pointfreeco/xctest-dynamic-overlay",
+      "repository_full_name": "pointfreeco/xctest-dynamic-overlay",
+      "revision": "34e463e98ab8541c604af706c99bed7160f5ec70",
+      "source_url": "https://codeload.github.com/pointfreeco/xctest-dynamic-overlay/tar.gz/34e463e98ab8541c604af706c99bed7160f5ec70",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "xctest-dynamic-overlay",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+            "compound-ios/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "1.8.1"
+      ],
+      "archive": "pointfreeco--xctest-dynamic-overlay--34e463e98ab8541c604af706c99bed7160f5ec70.tar.gz",
+      "sha256": "5587765a3a0fed74d98d615be9228f9fda404c351094a20bc1f64d15a304f649",
+      "bytes": 1617023,
+      "members": 129,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1073
+        }
+      ],
+      "lockfiles": [
+        "IssueReporting.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/PostHog/posthog-ios",
+      "repository_full_name": "PostHog/posthog-ios",
+      "revision": "d97d9a0babda42ecee026bd0a5a9ea1756349dc1",
+      "source_url": "https://codeload.github.com/PostHog/posthog-ios/tar.gz/d97d9a0babda42ecee026bd0a5a9ea1756349dc1",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "posthog-ios",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "3.85.3"
+      ],
+      "archive": "PostHog--posthog-ios--d97d9a0babda42ecee026bd0a5a9ea1756349dc1.tar.gz",
+      "sha256": "14e193af569d1b8a6d2f3a841cdae7fc0db14c3bab230c26de4b17848c2f3f38",
+      "bytes": 9201136,
+      "members": 1187,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 2338
+        },
+        {
+          "path": "PostHogExampleAutocapture/LICENSE/LICENSE.txt",
+          "bytes": 1054
+        },
+        {
+          "path": "vendor/PHPLCrashReporter/LICENSE",
+          "bytes": 2361
+        },
+        {
+          "path": "vendor/libwebp/COPYING",
+          "bytes": 1496
+        }
+      ],
+      "lockfiles": [
+        "Package.resolved",
+        "pnpm-lock.yaml",
+        "sdk_compliance_adapter/Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/ReactKit/SwiftState",
+      "repository_full_name": "ReactKit/SwiftState",
+      "revision": "887e75b96da6be36a062e1b0ef832c32a803348b",
+      "source_url": "https://codeload.github.com/ReactKit/SwiftState/tar.gz/887e75b96da6be36a062e1b0ef832c32a803348b",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swiftstate",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "6.0.1"
+      ],
+      "archive": "ReactKit--SwiftState--887e75b96da6be36a062e1b0ef832c32a803348b.tar.gz",
+      "sha256": "0e80295c61c35782d57273bac2f69f11d1eb80c7a3d88899f96679ddcc145f5c",
+      "bytes": 62975,
+      "members": 72,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1081
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/ruma/ruma",
+      "repository_full_name": "ruma/ruma",
+      "revision": "caf1ac05a9fd347158b60505ef8546a2ff18ae7c",
+      "source_url": "https://codeload.github.com/ruma/ruma/tar.gz/caf1ac05a9fd347158b60505ef8546a2ff18ae7c",
+      "reasons": [
+        {
+          "kind": "cargo-git-dependency",
+          "used_by": [
+            "sdk"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "ruma--ruma--caf1ac05a9fd347158b60505ef8546a2ff18ae7c.tar.gz",
+      "sha256": "a1c433ad78f8817ddcfe8e143c7a65add905f28fa80a57bd27b0949088635808",
+      "bytes": 981476,
+      "members": 1229,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1023
+        },
+        {
+          "path": "crates/ruma-events/src/room/message/notice.rs",
+          "bytes": 1363
+        }
+      ],
+      "lockfiles": [
+        "Cargo.lock"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/scinfu/SwiftSoup",
+      "repository_full_name": "scinfu/SwiftSoup",
+      "revision": "18b80329749eca5ea29fc50211dca5c7eff5bfec",
+      "source_url": "https://codeload.github.com/scinfu/SwiftSoup/tar.gz/18b80329749eca5ea29fc50211dca5c7eff5bfec",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swiftsoup",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "2.13.9"
+      ],
+      "archive": "scinfu--SwiftSoup--18b80329749eca5ea29fc50211dca5c7eff5bfec.tar.gz",
+      "sha256": "386fa7fd9666de2127093d2430e764c0584c0178e7071e10ffa3c76947c89812",
+      "bytes": 918640,
+      "members": 183,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1152
+        }
+      ],
+      "lockfiles": [
+        "SwiftSoup.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/SFSafeSymbols/SFSafeSymbols",
+      "repository_full_name": "SFSafeSymbols/SFSafeSymbols",
+      "revision": "e01b3d4f861412f8dcee8d93c417d2c2b0cdfd77",
+      "source_url": "https://codeload.github.com/SFSafeSymbols/SFSafeSymbols/tar.gz/e01b3d4f861412f8dcee8d93c417d2c2b0cdfd77",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "sfsafesymbols",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+            "compound-ios/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "7.0.0"
+      ],
+      "archive": "SFSafeSymbols--SFSafeSymbols--e01b3d4f861412f8dcee8d93c417d2c2b0cdfd77.tar.gz",
+      "sha256": "e349d44e3ca5637230f53742da4c2506a8683feffb661f13220a911e0e134e5d",
+      "bytes": 542024,
+      "members": 144,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1080
+        }
+      ],
+      "lockfiles": [
+        "SymbolsGenerator/Package.resolved"
+      ],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/shssoichiro/zxcvbn-rs",
+      "repository_full_name": "shssoichiro/zxcvbn-rs",
+      "revision": "4e8e784b23541d118800df84feedf8160879d1af",
+      "source_url": "https://codeload.github.com/shssoichiro/zxcvbn-rs/tar.gz/4e8e784b23541d118800df84feedf8160879d1af",
+      "reasons": [
+        {
+          "kind": "cargo-git-dependency",
+          "used_by": [
+            "sdk"
+          ]
+        }
+      ],
+      "versions": [],
+      "archive": "shssoichiro--zxcvbn-rs--4e8e784b23541d118800df84feedf8160879d1af.tar.gz",
+      "sha256": "de494b92583fa80234aea2618ad0b7a8ca5ec5bc1d6d1d0435292f48db2c1474",
+      "bytes": 430298,
+      "members": 26,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1079
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/siteline/SwiftUI-Introspect",
+      "repository_full_name": "siteline/SwiftUI-Introspect",
+      "revision": "7f76fe19415a60ce28493c5ec67b8da629f27a44",
+      "source_url": "https://codeload.github.com/siteline/SwiftUI-Introspect/tar.gz/7f76fe19415a60ce28493c5ec67b8da629f27a44",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swiftui-introspect",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+            "compound-ios/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "27.1.0"
+      ],
+      "archive": "siteline--SwiftUI-Introspect--7f76fe19415a60ce28493c5ec67b8da629f27a44.tar.gz",
+      "sha256": "4306a22349b692b5ba862c902a7da0d4eeced29085c0fa74655deaf01b3c97be",
+      "bytes": 334141,
+      "members": 197,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 1054
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/swiftlang/swift-subprocess",
+      "repository_full_name": "swiftlang/swift-subprocess",
+      "revision": "ba5888ad7758cbcbe7abebac37860b1652af2d9c",
+      "source_url": "https://codeload.github.com/swiftlang/swift-subprocess/tar.gz/ba5888ad7758cbcbe7abebac37860b1652af2d9c",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-subprocess",
+          "lockfiles": [
+            "Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "0.3.0"
+      ],
+      "archive": "swiftlang--swift-subprocess--ba5888ad7758cbcbe7abebac37860b1652af2d9c.tar.gz",
+      "sha256": "9ae209acc475d510b47a255ab27b7224112c2b811f59c9396a1ee3a85e159c62",
+      "bytes": 575706,
+      "members": 83,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 11357
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/swiftlang/swift-syntax",
+      "repository_full_name": "swiftlang/swift-syntax",
+      "revision": "050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf",
+      "source_url": "https://codeload.github.com/swiftlang/swift-syntax/tar.gz/050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swift-syntax",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved",
+            "Components/BuildExtensions/Package.resolved",
+            "compound-ios/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "604.0.0"
+      ],
+      "archive": "swiftlang--swift-syntax--050f1a346fbbac0ca2cfb15a95274f7bd1cf0ccf.tar.gz",
+      "sha256": "2112986ef9432364bc75f400e501138eadb3719cb43d15fb861c67d8286f0ad6",
+      "bytes": 1473225,
+      "members": 1043,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 11751
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/tevelee/SwiftUI-Flow",
+      "repository_full_name": "tevelee/SwiftUI-Flow",
+      "revision": "19e86b750b3c67260cbb28c459004c0dfdb11899",
+      "source_url": "https://codeload.github.com/tevelee/SwiftUI-Flow/tar.gz/19e86b750b3c67260cbb28c459004c0dfdb11899",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "swiftui-flow",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "3.5.1"
+      ],
+      "archive": "tevelee--SwiftUI-Flow--19e86b750b3c67260cbb28c459004c0dfdb11899.tar.gz",
+      "sha256": "074c348d866a4846d9e42e45b3203a0b6bfda948b279f2add8bd3db7085e049d",
+      "bytes": 2550198,
+      "members": 242,
+      "license_markers": [
+        {
+          "path": "LICENSE.txt",
+          "bytes": 1070
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/vector-im/ogg-swift",
+      "repository_full_name": "vector-im/ogg-swift",
+      "revision": "9d82ed838404f10b607a1a1689f404563e9115c3",
+      "source_url": "https://codeload.github.com/vector-im/ogg-swift/tar.gz/9d82ed838404f10b607a1a1689f404563e9115c3",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "ogg-swift",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "0.8.3"
+      ],
+      "archive": "vector-im--ogg-swift--9d82ed838404f10b607a1a1689f404563e9115c3.tar.gz",
+      "sha256": "73cf4a93527e6ec676ef340fac102ee8a6f037802ac890145fc88b74635b8a9f",
+      "bytes": 12641,
+      "members": 30,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 2838
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    },
+    {
+      "repository": "https://github.com/vector-im/opus-swift",
+      "repository_full_name": "vector-im/opus-swift",
+      "revision": "11f1887767cbc87c4b64b789ee830b779cc744cb",
+      "source_url": "https://codeload.github.com/vector-im/opus-swift/tar.gz/11f1887767cbc87c4b64b789ee830b779cc744cb",
+      "reasons": [
+        {
+          "kind": "swift-package",
+          "identity": "opus-swift",
+          "lockfiles": [
+            "ElementX.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+          ]
+        }
+      ],
+      "versions": [
+        "0.8.4"
+      ],
+      "archive": "vector-im--opus-swift--11f1887767cbc87c4b64b789ee830b779cc744cb.tar.gz",
+      "sha256": "d6261945e0f823c80dec1cc8739364b5acb88ffcdab9c30217e9c16b2851d203",
+      "bytes": 16147,
+      "members": 35,
+      "license_markers": [
+        {
+          "path": "LICENSE",
+          "bytes": 3495
+        }
+      ],
+      "lockfiles": [],
+      "lfs_pointer_paths": [],
+      "status": "verified-archive"
+    }
+  ],
+  "build10_environment": {
+    "xcode": "27.0",
+    "xcode_build": "27A266a",
+    "xcodegen": "2.46.0",
+    "swiftgen": "6.6.3",
+    "sourcery": "2.4.1",
+    "git-lfs": "3.8.1",
+    "native_service_mode": "links-only",
+    "source": "GitHub Actions run 42821345748, signed-archive job 129847469822"
+  },
+  "additional_external_source_links": [
+    {
+      "wrapper_repository": "https://github.com/maplibre/maplibre-gl-native-distribution",
+      "wrapper_revision": "13e41ab3d77ff5113e7e5d4ee87803b1f81f5683",
+      "repository": "https://github.com/maplibre/maplibre-native",
+      "revision": "01791ad02c1bfe3b22c42a97619b972aba962f82",
+      "tag": "ios-v6.31.0",
+      "source_archive_url": "https://codeload.github.com/maplibre/maplibre-native/tar.gz/01791ad02c1bfe3b22c42a97619b972aba962f82",
+      "source_link_evidence": "https://github.com/maplibre/maplibre-gl-native-distribution/blob/13e41ab3d77ff5113e7e5d4ee87803b1f81f5683/Package.swift",
+      "license": "BSD-2-Clause",
+      "license_url": "https://github.com/maplibre/maplibre-native/blob/01791ad02c1bfe3b22c42a97619b972aba962f82/LICENSE.md",
+      "additional_notices_url": "https://github.com/maplibre/maplibre-native/blob/01791ad02c1bfe3b22c42a97619b972aba962f82/LICENSES.core.md",
+      "status": "external-source-link-verified"
+    },
+    {
+      "wrapper_repository": "https://github.com/vector-im/ogg-swift",
+      "wrapper_revision": "9d82ed838404f10b607a1a1689f404563e9115c3",
+      "repository": "https://github.com/xiph/ogg",
+      "revision": "bada45718453ac27b56773ae663f7e65112f6a6e",
+      "tag": "v1.3.4",
+      "source_archive_url": "https://downloads.xiph.org/releases/ogg/libogg-1.3.4.zip",
+      "git_source_archive_url": "https://codeload.github.com/xiph/ogg/tar.gz/bada45718453ac27b56773ae663f7e65112f6a6e",
+      "source_link_evidence": "https://github.com/vector-im/ogg-swift/blob/9d82ed838404f10b607a1a1689f404563e9115c3/prepare.sh",
+      "license": "BSD-3-Clause",
+      "license_url": "https://github.com/xiph/ogg/blob/bada45718453ac27b56773ae663f7e65112f6a6e/COPYING",
+      "status": "external-source-link-verified"
+    },
+    {
+      "wrapper_repository": "https://github.com/vector-im/opus-swift",
+      "wrapper_revision": "11f1887767cbc87c4b64b789ee830b779cc744cb",
+      "repository": "https://github.com/xiph/opus",
+      "revision": "e85ed7726db5d677c9c0677298ea0cb9c65bdd23",
+      "tag": "v1.3.1",
+      "source_archive_url": "https://archive.mozilla.org/pub/opus/opus-1.3.1.tar.gz",
+      "git_source_archive_url": "https://codeload.github.com/xiph/opus/tar.gz/e85ed7726db5d677c9c0677298ea0cb9c65bdd23",
+      "source_link_evidence": "https://github.com/vector-im/opus-swift/blob/11f1887767cbc87c4b64b789ee830b779cc744cb/prepare.sh",
+      "license": "BSD-3-Clause",
+      "license_url": "https://github.com/xiph/opus/blob/e85ed7726db5d677c9c0677298ea0cb9c65bdd23/COPYING",
+      "additional_notices_url": "https://github.com/xiph/opus/blob/e85ed7726db5d677c9c0677298ea0cb9c65bdd23/LICENSE_PLEASE_READ.txt",
+      "status": "external-source-link-verified"
+    }
+  ],
+  "unresolved_native_binary_provenance": [
+    "RTC media depends on registry crates livekit 0.7.48, libwebrtc 0.3.38 and webrtc-sys 0.3.35. The exact underlying Chromium/WebRTC native source SHA was not established in this audit. Cargo.lock retains crate versions/checksums."
+  ]
+}

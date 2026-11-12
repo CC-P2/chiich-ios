@@ -1,0 +1,293 @@
+diff --git a/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift b/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift
+--- a/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift
++++ b/ElementX/Sources/FlowCoordinators/OnboardingFlowCoordinator.swift
+@@ -132,6 +132,12 @@
+     // MARK: - Private
+     
+     private var requiresVerification: Bool {
++        // CHIICH's existing plaintext policy must not lock an authenticated user
++        // out of ordinary chats. This only defers the blocking presentation:
++        // the SDK's verification state, keys and encrypted rooms stay unchanged.
++        // Recovery remains available in Settings, and the native gate applies
++        // again whenever the existing plaintext policy is not active.
++        guard !userSettings.app.forceDisableE2EE.publisher.value else { return false }
+         guard userSession.sessionSecurityStatePublisher.value.verificationState != .verified else { return false }
+         // We want to make sure onboarding finishes but also every time the user becomes unverified (e.g. account reset)
+         return !userSettings.account.hasRunIdentityConfirmationOnboarding || userSession.sessionSecurityStatePublisher.value.verificationState == .unverified
+diff --git a/UnitTests/Sources/CHIICHOnboardingTests.swift b/UnitTests/Sources/CHIICHOnboardingTests.swift
+--- a/UnitTests/Sources/CHIICHOnboardingTests.swift
++++ b/UnitTests/Sources/CHIICHOnboardingTests.swift
+@@ -6,6 +6,7 @@
+ 
+ import Combine
+ @testable import ElementX
++import Foundation
+ import Testing
+ 
+ @Suite(.timeLimit(.minutes(1)))
+@@ -80,15 +81,113 @@
+         let fixture = OnboardingFixture(isNewLogin: false, verificationState: .verified, analyticsConsentRequired: true)
+         #expect(fixture.coordinator.shouldStart)
+     }
++
++    @Test(arguments: [SessionVerificationState.unknown, .unverified])
++    func plaintextNewLoginDoesNotPresentVerificationOrChangeSecurityState(verificationState: SessionVerificationState) {
++        let fixture = OnboardingFixture(isNewLogin: true, verificationState: verificationState, forceDisableE2EE: true)
++        var presented = false
++        var dismissed = false
++        let subscription = fixture.coordinator.actions.sink {
++            switch $0 {
++            case .requestPresentation: presented = true
++            case .dismiss: dismissed = true
++            case .logoutConfirmed: Issue.record("Deferring verification must not log out.")
++            }
++        }
++        #expect(fixture.coordinator.shouldStart)
++        fixture.coordinator.start()
++
++        withExtendedLifetime(subscription) {
++            #expect(!presented)
++            #expect(dismissed)
++        }
++        #expect(fixture.navigationStack.rootCoordinator == nil)
++        #expect(fixture.userSession.userSettings.app.hasSignedInBefore)
++        #expect(!fixture.userSession.userSettings.account.hasRunIdentityConfirmationOnboarding)
++        #expect(fixture.userSession.sessionSecurityStatePublisher.value.verificationState == verificationState)
++        #expect(fixture.userSession.sessionSecurityStatePublisher.value.recoveryState == .enabled)
++        #expect(!fixture.coordinator.shouldStart)
++    }
++
++    @Test(arguments: [SessionVerificationState.unknown, .unverified])
++    func plaintextRestoredSessionDoesNotShowBlockingVerification(verificationState: SessionVerificationState) {
++        let fixture = OnboardingFixture(isNewLogin: false, verificationState: verificationState, forceDisableE2EE: true)
++        #expect(!fixture.coordinator.shouldStart)
++        #expect(!fixture.userSession.userSettings.account.hasRunIdentityConfirmationOnboarding)
++        #expect(fixture.userSession.sessionSecurityStatePublisher.value.verificationState == verificationState)
++    }
++
++    @Test
++    func enablingEncryptionRestoresNativeVerificationGate() {
++        let fixture = OnboardingFixture(isNewLogin: false, verificationState: .unverified, forceDisableE2EE: true)
++        #expect(!fixture.coordinator.shouldStart)
++        fixture.userSession.userSettings.app.forceDisableE2EE.applyRemoteValue(false)
++        #expect(fixture.coordinator.shouldStart)
++        #expect(!fixture.userSession.userSettings.account.hasRunIdentityConfirmationOnboarding)
++    }
++
++    @Test
++    func plaintextPolicyDoesNotSkipPendingNotificationPermission() {
++        let fixture = OnboardingFixture(isNewLogin: false, verificationState: .unverified, forceDisableE2EE: true)
++        fixture.userSession.userSettings.account.enableNotifications = true
++        fixture.userSession.userSettings.app.hasRunNotificationPermissionsOnboarding = false
++        #expect(fixture.coordinator.shouldStart)
++    }
++
++    @Test
++    func plaintextPolicyDoesNotSkipPendingAnalyticsConsent() {
++        let fixture = OnboardingFixture(isNewLogin: false, verificationState: .unverified,
++                                        analyticsConsentRequired: true, forceDisableE2EE: true)
++        #expect(fixture.coordinator.shouldStart)
++    }
++
++    @Test(arguments: [false, true])
++    func incomingVerificationPresentationFollowsPlaintextPolicy(forceDisableE2EE: Bool) async throws {
++        let fixture = OnboardingFixture(isNewLogin: false, verificationState: .verified, forceDisableE2EE: forceDisableE2EE)
++        let client = try #require(fixture.userSession.clientProxy as? ClientProxyMock)
++        let verification = SessionVerificationControllerProxyMock.configureMock()
++        client.sessionVerificationController = verification
++        let root = NavigationRootCoordinator()
++        let sessionCoordinator = UserSessionFlowCoordinator(isNewLogin: false,
++                                                            navigationRootCoordinator: root,
++                                                            appLockService: AppLockServiceMock(),
++                                                            flowParameters: fixture.flowParameters)
++        sessionCoordinator.start()
++        defer { sessionCoordinator.stop() }
++        // Drain the initial security-state delivery, which installs the request observer.
++        await withCheckedContinuation { continuation in
++            DispatchQueue.main.async { continuation.resume() }
++        }
++        let tabs = try #require(root.rootCoordinator as? NavigationTabCoordinator<UserSessionFlowCoordinator.HomeTab>)
++        let details = SessionVerificationRequestDetails(senderProfile: UserProfile(userID: client.userID),
++                                                        flowID: "synthetic-verification", deviceID: "synthetic-device",
++                                                        deviceDisplayName: "Test device", firstSeenDate: .now)
++        if forceDisableE2EE {
++            let unexpected = deferFailure(tabs.observe(\.sheetCoordinatorID), timeout: .milliseconds(200)) { $0 != nil }
++            verification.actions.send(.receivedVerificationRequest(details: details))
++            try await unexpected.fulfill()
++            #expect(tabs.sheetCoordinator == nil)
++        } else {
++            let presented = deferFulfillment(tabs.observe(\.sheetCoordinatorID)) { $0 != nil }
++            verification.actions.send(.receivedVerificationRequest(details: details))
++            try await presented.fulfill()
++            #expect((tabs.sheetCoordinator as? NavigationStackCoordinator)?.rootCoordinator is SessionVerificationScreenCoordinator)
++        }
++        #expect(fixture.userSession.sessionSecurityStatePublisher.value.verificationState == .verified)
++    }
+ }
+ 
+ private struct OnboardingFixture {
+     let userSession: UserSessionMock
+     let navigationStack = NavigationStackCoordinator()
+     let coordinator: OnboardingFlowCoordinator
+-    
+-    init(isNewLogin: Bool, verificationState: SessionVerificationState, analyticsConsentRequired: Bool = false) {
++    let flowParameters: CommonFlowParameters
++    
++    init(isNewLogin: Bool, verificationState: SessionVerificationState, analyticsConsentRequired: Bool = false,
++         forceDisableE2EE: Bool = false) {
+         userSession = UserSessionMock(.init())
++        // Exercise the native encrypted policy explicitly in the older tests.
++        userSession.userSettings.app.forceDisableE2EE.applyRemoteValue(forceDisableE2EE)
+         userSession.userSettings.account.hasRunIdentityConfirmationOnboarding = false
+         userSession.userSettings.app.hasSignedInBefore = false
+         userSession.userSettings.app.hasRunNotificationPermissionsOnboarding = true
+@@ -96,7 +195,7 @@
+                                                                                                            recoveryState: .enabled)).asCurrentValuePublisher()
+         let appLockService = AppLockServiceMock()
+         appLockService.isEnabled = false
+-        let parameters = CommonFlowParameters(userSession: userSession,
++        flowParameters = CommonFlowParameters(userSession: userSession,
+                                               availableSessionsPublisher: .init([.init(userSession: userSession)]),
+                                               bugReportService: BugReportServiceMock(.init()),
+                                               elementCallService: ElementCallServiceMock(.init()),
+@@ -110,6 +209,6 @@
+         coordinator = OnboardingFlowCoordinator(isNewLogin: isNewLogin,
+                                                 appLockService: appLockService,
+                                                 navigationStackCoordinator: navigationStack,
+-                                                flowParameters: parameters)
++                                                flowParameters: flowParameters)
+     }
+ }
+diff --git a/ElementX/Sources/Screens/HomeScreen/HomeScreenViewModel.swift b/ElementX/Sources/Screens/HomeScreen/HomeScreenViewModel.swift
+--- a/ElementX/Sources/Screens/HomeScreen/HomeScreenViewModel.swift
++++ b/ElementX/Sources/Screens/HomeScreen/HomeScreenViewModel.swift
+@@ -63,9 +63,17 @@
+             .store(in: &cancellables)
+         
+         userSession.sessionSecurityStatePublisher
+-            .receive(on: DispatchQueue.main)
+-            .sink { [weak self] securityState in
++            .combineLatest(userSettings.app.forceDisableE2EE.publisher)
++            .receive(on: DispatchQueue.main)
++            .sink { [weak self] securityState, forceDisableE2EE in
+                 guard let self else { return }
++
++                // Plaintext CHIICH chats do not require recovery-key setup.
++                // Preserve the actual state and manual recovery for old encrypted rooms.
++                guard !forceDisableE2EE else {
++                    state.securityBannerMode = .none
++                    return
++                }
+                 
+                 switch securityState.recoveryState {
+                 case .disabled:
+diff --git a/UnitTests/Sources/HomeScreenViewModelTests.swift b/UnitTests/Sources/HomeScreenViewModelTests.swift
+--- a/UnitTests/Sources/HomeScreenViewModelTests.swift
++++ b/UnitTests/Sources/HomeScreenViewModelTests.swift
+@@ -26,6 +26,8 @@
+     
+     init() {
+         userSettings = UserSettings.mock()
++        // Existing banner tests cover the native encrypted-chat policy.
++        userSettings.app.forceDisableE2EE.applyRemoteValue(false)
+     }
+     
+     @Test
+@@ -237,6 +239,38 @@
+         
+         // Then the banner should no longer be shown.
+         try await deferred.fulfill()
++    }
++
++    @Test(arguments: [SecureBackupRecoveryState.disabled, .incomplete])
++    func plaintextPolicySuppressesRecoveryPromptsWithoutChangingRecovery(recoveryState: SecureBackupRecoveryState) async throws {
++        userSettings.app.forceDisableE2EE.applyRemoteValue(true)
++        let securityStateSubject = CurrentValueSubject<SessionSecurityState, Never>(.init(verificationState: .unverified,
++                                                                                          recoveryState: recoveryState))
++        setupViewModel(securityStatePublisher: securityStateSubject.asCurrentValuePublisher())
++        let failure = deferFailure(context.$viewState, timeout: .seconds(1)) { $0.securityBannerMode.isShown }
++        try await failure.fulfill()
++        #expect(context.viewState.securityBannerMode == .none)
++        #expect(securityStateSubject.value.verificationState == .unverified)
++        #expect(securityStateSubject.value.recoveryState == recoveryState)
++    }
++
++    @Test
++    func recoveryPromptFollowsPolicyChangesWithoutChangingSecurityState() async throws {
++        let securityStateSubject = CurrentValueSubject<SessionSecurityState, Never>(.init(verificationState: .verified,
++                                                                                          recoveryState: .incomplete))
++        setupViewModel(securityStatePublisher: securityStateSubject.asCurrentValuePublisher())
++        var deferred = deferFulfillment(context.$viewState) { $0.securityBannerMode == .show(.recoveryOutOfSync) }
++        try await deferred.fulfill()
++
++        deferred = deferFulfillment(context.$viewState) { $0.securityBannerMode == .none }
++        userSettings.app.forceDisableE2EE.applyRemoteValue(true)
++        try await deferred.fulfill()
++
++        deferred = deferFulfillment(context.$viewState) { $0.securityBannerMode == .show(.recoveryOutOfSync) }
++        userSettings.app.forceDisableE2EE.applyRemoteValue(false)
++        try await deferred.fulfill()
++        #expect(securityStateSubject.value.verificationState == .verified)
++        #expect(securityStateSubject.value.recoveryState == .incomplete)
+     }
+     
+     @Test
+diff --git a/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift b/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift
+--- a/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift
++++ b/ElementX/Sources/FlowCoordinators/UserSessionFlowCoordinator.swift
+@@ -222,7 +222,8 @@
+               chiichInvitationTask == nil,
+               !isPresentingOnboarding,
+               // Native onboarding alone decides whether verification can finish or be skipped.
+-              userSession.sessionSecurityStatePublisher.value.verificationState != .unknown else { return }
++              (userSession.userSettings.app.forceDisableE2EE.publisher.value
++                  || userSession.sessionSecurityStatePublisher.value.verificationState != .unknown) else { return }
+         let requestID = UUID()
+         chiichInvitationID = requestID
+         flowParameters.userIndicatorController.submitIndicator(UserIndicator(id: requestID.uuidString,
+@@ -529,6 +530,9 @@
+                 guard let self, case .receivedVerificationRequest(let details) = action else {
+                     return
+                 }
++                // Match CHIICH's existing plaintext policy: do not interrupt chats
++                // with unsolicited crypto verification. Manual recovery stays available.
++                guard !userSession.userSettings.app.forceDisableE2EE.publisher.value else { return }
+                 
+                 MXLog.info("Received session verification request")
+                 
+diff --git a/UnitTests/Sources/CHIICHIdentityRoutingTests.swift b/UnitTests/Sources/CHIICHIdentityRoutingTests.swift
+--- a/UnitTests/Sources/CHIICHIdentityRoutingTests.swift
++++ b/UnitTests/Sources/CHIICHIdentityRoutingTests.swift
+@@ -112,6 +112,19 @@
+         #expect(fixture.client.createDirectRoomWithExpectedRoomNameCallsCount == 0)
+     }
+ 
++    @Test(arguments: [SessionVerificationState.unknown, .unverified], [false, true])
++    func plaintextInvitationDoesNotWaitForCryptographicVerification(_ verificationState: SessionVerificationState, _ isNewLogin: Bool) async throws {
++        let fixture = Fixture(verificationState: verificationState, isNewLogin: isNewLogin, forceDisableE2EE: true)
++        let tabs = try #require(fixture.tabs)
++        let opened = deferFulfillment(fixture.profileRequests) { $0 == "@bob:chat.chiich.one" }
++        fixture.coordinator.handleAppRoute(.chiichPublicUsername(try CHIICHPublicUsername("oldname")), animated: false)
++        try await opened.fulfill()
++        #expect(!tabs.chiichHasOnboardingCover)
++        #expect(fixture.securityState.value.verificationState == verificationState)
++        #expect(fixture.requests == [.resolve(try CHIICHPublicUsername("oldname"))])
++        #expect(fixture.client.createDirectRoomWithExpectedRoomNameCallsCount == 0)
++    }
++
+     @Test(arguments: [false, true])
+     func navigationOrLogoutDuringVerificationCancelsTheRetainedRecipient(_ stopSession: Bool) async throws {
+         let fixture = Fixture(verificationState: .unknown)
+@@ -159,9 +172,11 @@
+ 
+         var split: NavigationSplitCoordinator? { tabs?.tabCoordinators.first as? NavigationSplitCoordinator }
+ 
+-        init(verificationState: SessionVerificationState = .verified, isNewLogin: Bool = false) {
++        init(verificationState: SessionVerificationState = .verified, isNewLogin: Bool = false, forceDisableE2EE: Bool = false) {
+             client.chiichReceiverAIIsSessionActive = true
+             let userSession = UserSessionMock(.init(clientProxy: client))
++            // Keep mandatory encrypted onboarding in the original routing tests.
++            userSession.userSettings.app.forceDisableE2EE.applyRemoteValue(forceDisableE2EE)
+             securityState = .init(.init(verificationState: verificationState, recoveryState: .enabled))
+             userSession.sessionSecurityStatePublisher = securityState.asCurrentValuePublisher()
+             userSession.userSettings.account.hasRunIdentityConfirmationOnboarding = !isNewLogin

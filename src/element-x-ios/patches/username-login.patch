@@ -1,0 +1,528 @@
+diff --git a/ElementX/Sources/Services/Authentication/AuthenticationService.swift b/ElementX/Sources/Services/Authentication/AuthenticationService.swift
+--- a/ElementX/Sources/Services/Authentication/AuthenticationService.swift
++++ b/ElementX/Sources/Services/Authentication/AuthenticationService.swift
+@@ -23,6 +23,7 @@
+     private let userSessionManager: UserSessionManagerProtocol
+     private let classicAppManager: ClassicAppManagerProtocol?
+     private let clientFactory: ClientFactoryProtocol
++    private let passwordLoginResolver: CHIICHPasswordLoginResolver
+     private let appSettings: AppSettings
+     private let appHooks: AppHooks
+     
+@@ -42,6 +43,7 @@
+          encryptionKeyProvider: EncryptionKeyProviderProtocol,
+          classicAppManager: ClassicAppManagerProtocol?,
+          clientFactory: ClientFactoryProtocol = ClientFactory(),
++         passwordLoginResolver: CHIICHPasswordLoginResolver = .init(),
+          appSettings: AppSettings,
+          appHooks: AppHooks) {
+         sessionDirectories = .init()
+@@ -50,6 +52,7 @@
+         self.userSessionManager = userSessionManager
+         self.classicAppManager = classicAppManager
+         self.clientFactory = clientFactory
++        self.passwordLoginResolver = passwordLoginResolver
+         self.appSettings = appSettings
+         self.appHooks = appHooks
+         
+@@ -166,7 +169,19 @@
+         passwordLoginInProgress = true
+         defer { passwordLoginInProgress = false }
+         do {
+-            try await client.login(username: username, password: password, initialDeviceName: initialDeviceName, deviceId: deviceID)
++            let identifier = try await passwordLoginResolver.resolve(username: username, homeserver: client.homeserver())
++            try Task.checkCancellation()
++            try await client.login(username: identifier.username, password: password, initialDeviceName: initialDeviceName, deviceId: deviceID)
++            guard !Task.isCancelled else {
++                // The SDK can finish the exchange after the caller cancels. This
++                // temporary client has not reached native session persistence yet.
++                _ = try? await client.logout()
++                return .failure(.failedLoggingIn)
++            }
++            if let expectedUserID = identifier.expectedUserID, (try? client.userId()) != expectedUserID {
++                _ = try? await client.logout()
++                return .failure(.invalidCredentials)
++            }
+             
+             let refreshToken = try? client.session().refreshToken
+             if refreshToken != nil {
+@@ -177,6 +192,12 @@
+             
+             await verifyClientIfPossible(client: client)
+             
++            guard !Task.isCancelled else {
++                _ = try? await client.logout()
++                return .failure(.failedLoggingIn)
++            }
++            // Native persistence is the commit boundary. Deliver its result even
++            // if the caller cancels while the store is saving Keychain credentials.
+             return await userSession(for: client)
+         } catch let ClientError.MatrixApi(errorKind, _, _, _) {
+             MXLog.error("Failed logging in with error kind: \(errorKind)")
+diff --git a/ElementX/Sources/Services/Authentication/CHIICHPasswordLoginResolver.swift b/ElementX/Sources/Services/Authentication/CHIICHPasswordLoginResolver.swift
+new file mode 100644
+--- /dev/null
++++ b/ElementX/Sources/Services/Authentication/CHIICHPasswordLoginResolver.swift
+@@ -0,0 +1,50 @@
++// Copyright 2026 CHIICH.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++
++import Foundation
++
++nonisolated struct CHIICHPasswordLoginIdentifier: Equatable, Sendable {
++    let username: String
++    let expectedUserID: String?
++}
++
++/// Resolves an owned public alias before the existing SDK password exchange.
++/// The public lookup never receives a password, token, cookie or account mutation.
++final class CHIICHPasswordLoginResolver {
++    typealias Request = (URLRequest) async -> Result<Data, CHIICHIdentityError>
++
++    private let request: Request
++
++    init(request: @escaping Request = { await CHIICHIdentityHTTP.send($0) }) {
++        self.request = request
++    }
++
++    func resolve(username: String, homeserver: String) async throws -> CHIICHPasswordLoginIdentifier {
++        try Task.checkCancellation()
++        let native = CHIICHPasswordLoginIdentifier(username: username, expectedUserID: nil)
++        // Full Matrix IDs, historical localparts and other servers retain the SDK path.
++        guard let alias = try? CHIICHPublicUsername(chosen: username),
++              let lookup = try? CHIICHIdentityRequest.resolve(alias).urlRequest(homeserver: homeserver) else {
++            return native
++        }
++        let result = await request(lookup)
++        try Task.checkCancellation()
++        switch result {
++        case .failure(.notFound):
++            // Only an authoritative 404 allows a historical localpart password attempt.
++            // This never provisions an account or claims a public alias.
++            return native
++        case .failure(let error):
++            throw error
++        case .success(let data):
++            guard data.count <= CHIICHIdentityHTTP.responseLimit else { throw CHIICHIdentityError.invalidResponse }
++            do {
++                let recipient = try JSONDecoder().decode(CHIICHIdentityRecipient.self, from: data).validated()
++                // A retired alias can return its owner's new name, but always the same owned MXID.
++                return CHIICHPasswordLoginIdentifier(username: recipient.userID, expectedUserID: recipient.userID)
++            } catch {
++                throw CHIICHIdentityError.invalidResponse
++            }
++        }
++    }
++}
+diff --git a/UnitTests/Sources/CHIICHPasswordLoginResolverTests.swift b/UnitTests/Sources/CHIICHPasswordLoginResolverTests.swift
+new file mode 100644
+--- /dev/null
++++ b/UnitTests/Sources/CHIICHPasswordLoginResolverTests.swift
+@@ -0,0 +1,140 @@
++// Copyright 2026 CHIICH.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++
++@testable import ElementX
++import Foundation
++import Testing
++
++@Suite(.timeLimit(.minutes(1)))
++@MainActor
++struct CHIICHPasswordLoginResolverTests {
++    @Test(arguments: ["https://matrix.chiich.one", "https://chiich-matrix.onrender.com/", "https://matrix.chiich.one:443"])
++    func publicLookupHasNoCredentialsOrMutation(_ homeserver: String) async throws {
++        let fixture = CHIICHUsernameLookupFixture()
++        let identifier = try await fixture.resolver.resolve(username: "ИВАН123", homeserver: homeserver)
++
++        #expect(identifier == .init(username: CHIICHUsernameLookupFixture.userID, expectedUserID: CHIICHUsernameLookupFixture.userID))
++        let request = try #require(fixture.requests.first)
++        #expect(fixture.requests.count == 1)
++        #expect(request.httpMethod == "GET")
++        #expect(request.url?.path(percentEncoded: false) == "/_synapse/client/chiich/username/иван123")
++        #expect(request.url?.query == nil)
++        #expect(request.httpBody == nil)
++        #expect(request.value(forHTTPHeaderField: "Authorization") == nil)
++        #expect(request.value(forHTTPHeaderField: "Cookie") == nil)
++        #expect(request.value(forHTTPHeaderField: "Accept") == "application/json")
++    }
++
++    @Test
++    func retiredAliasKeepsItsOwnersImmutableAccount() async throws {
++        let fixture = CHIICHUsernameLookupFixture()
++        // The returned current name deliberately differs from the historical input.
++        let identifier = try await fixture.resolver.resolve(username: "oldname", homeserver: Self.homeserver)
++        #expect(identifier.username == CHIICHUsernameLookupFixture.userID)
++        #expect(identifier.expectedUserID == CHIICHUsernameLookupFixture.userID)
++    }
++
++    @Test(arguments: ["@existing=40email:chat.chiich.one", "@someone:example.com", "legacy_name", "a", "admin", "existing@email.invalid",
++                      " Alice", "Alice ", "ＡＬＩＣＥ", "Е\u{0308}жик"])
++    func matrixIDsAndHistoricalLocalpartsKeepTheNativePath(_ username: String) async throws {
++        let fixture = CHIICHUsernameLookupFixture()
++        let identifier = try await fixture.resolver.resolve(username: username, homeserver: Self.homeserver)
++        #expect(identifier == .init(username: username, expectedUserID: nil))
++        #expect(fixture.requests.isEmpty)
++    }
++
++    @Test(arguments: ["https://matrix.example.com", "http://matrix.chiich.one", "https://matrix.chiich.one.evil.invalid",
++                      "https://matrix.chiich.one/path", "https://matrix.chiich.one?token=synthetic", "https://matrix.chiich.one#fragment",
++                      "https://user@matrix.chiich.one", "https://matrix.chiich.one:8448"])
++    func otherOriginsNeverReceiveTheAliasLookup(_ homeserver: String) async throws {
++        let fixture = CHIICHUsernameLookupFixture()
++        let identifier = try await fixture.resolver.resolve(username: "Alice", homeserver: homeserver)
++        #expect(identifier == .init(username: "Alice", expectedUserID: nil))
++        #expect(fixture.requests.isEmpty)
++    }
++
++    @Test
++    func authoritativeNotFoundPreservesTheTypedLegacyUsername() async throws {
++        let fixture = CHIICHUsernameLookupFixture(result: .failure(.notFound))
++        let identifier = try await fixture.resolver.resolve(username: "Alice", homeserver: Self.homeserver)
++        #expect(identifier == .init(username: "Alice", expectedUserID: nil))
++        #expect(fixture.requests.count == 1)
++    }
++
++    @Test(arguments: [CHIICHIdentityError.rateLimited, .unavailable, .uncertain, .invalidResponse, .cancelled, .matrixUnknownToken(softLogout: true)])
++    func lookupErrorsCannotBecomeALegacyPasswordAttempt(_ error: CHIICHIdentityError) async {
++        let fixture = CHIICHUsernameLookupFixture(result: .failure(error))
++        await #expect(throws: error) {
++            try await fixture.resolver.resolve(username: "Alice", homeserver: Self.homeserver)
++        }
++        #expect(fixture.requests.count == 1)
++    }
++
++    @Test(arguments: ["@someone:evil.invalid", "@someone:chat.chiich.one.evil.invalid", "someone:chat.chiich.one",
++                      "@person\n:chat.chiich.one", "@person:chat.chiich.one\n", "@:chat.chiich.one"])
++    func resolvedAccountMustBeAnExactOwnedMatrixID(_ userID: String) async throws {
++        let data = try JSONSerialization.data(withJSONObject: ["username": "newname", "user_id": userID])
++        let fixture = CHIICHUsernameLookupFixture(result: .success(data))
++        await #expect(throws: CHIICHIdentityError.invalidResponse) {
++            try await fixture.resolver.resolve(username: "Alice", homeserver: Self.homeserver)
++        }
++    }
++
++    @Test(arguments: [Data(), Data("not json".utf8), Data("{\"username\":\"alice\"}".utf8),
++                      Data("{\"username\":false,\"user_id\":\"@alice:chat.chiich.one\"}".utf8), Data(count: 16_385)])
++    func malformedOrOversizedRepliesCannotBecomeCredentials(_ data: Data) async {
++        let fixture = CHIICHUsernameLookupFixture(result: .success(data))
++        await #expect(throws: CHIICHIdentityError.invalidResponse) {
++            try await fixture.resolver.resolve(username: "Alice", homeserver: Self.homeserver)
++        }
++    }
++
++    private static let homeserver = "https://matrix.chiich.one"
++}
++
++@MainActor
++final class CHIICHUsernameLookupFixture {
++    static let userID = "@existing=40email:chat.chiich.one"
++    static let response = Data("{\"username\":\"newname\",\"user_id\":\"@existing=40email:chat.chiich.one\"}".utf8)
++
++    var result: Result<Data, CHIICHIdentityError>
++    var requests = [URLRequest]()
++    var gate: CHIICHUsernameLookupGate?
++
++    init(result: Result<Data, CHIICHIdentityError> = .success(CHIICHUsernameLookupFixture.response)) {
++        self.result = result
++    }
++
++    var resolver: CHIICHPasswordLoginResolver {
++        CHIICHPasswordLoginResolver { request in
++            self.requests.append(request)
++            if let gate = self.gate { await gate.suspend() }
++            return self.result
++        }
++    }
++}
++
++actor CHIICHUsernameLookupGate {
++    private var entered = false
++    private var entryWaiters: [CheckedContinuation<Void, Never>] = []
++    private var continuation: CheckedContinuation<Void, Never>?
++
++    func suspend() async {
++        await withCheckedContinuation { continuation in
++            self.continuation = continuation
++            entered = true
++            entryWaiters.forEach { $0.resume() }
++            entryWaiters.removeAll()
++        }
++    }
++
++    func waitUntilEntered() async {
++        guard !entered else { return }
++        await withCheckedContinuation { entryWaiters.append($0) }
++    }
++
++    func release() {
++        continuation?.resume()
++        continuation = nil
++    }
++}
+diff --git a/UnitTests/Sources/CHIICHUsernameLoginTests.swift b/UnitTests/Sources/CHIICHUsernameLoginTests.swift
+new file mode 100644
+--- /dev/null
++++ b/UnitTests/Sources/CHIICHUsernameLoginTests.swift
+@@ -0,0 +1,262 @@
++// Copyright 2026 CHIICH.
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++
++@testable import ElementX
++import Foundation
++import MatrixRustSDK
++import MatrixRustSDKMocks
++import Testing
++
++@Suite(.timeLimit(.minutes(1)))
++@MainActor
++struct CHIICHUsernameLoginTests {
++    @Test
++    func aliasUsesOnlyTheExistingSDKPasswordAndSessionFlow() async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        try await fixture.configure()
++        _ = try await fixture.login(username: "ИВАН123").get()
++
++        let arguments = try #require(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdReceivedArguments)
++        #expect(arguments.username == CHIICHUsernameLookupFixture.userID)
++        #expect(arguments.password == CHIICHUsernameLoginFixture.password)
++        #expect(arguments.initialDeviceName == "Synthetic iPhone")
++        #expect(arguments.deviceId == "EXISTINGDEVICE")
++        #expect(fixture.lookup.requests.count == 1)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++        #expect(fixture.client.startSsoLoginRedirectUrlIdpIdCallsCount == 0)
++    }
++
++    @Test
++    func fullMatrixIDForSoftLogoutBypassesThePublicLookup() async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        try await fixture.configure()
++        _ = try await fixture.login(username: CHIICHUsernameLookupFixture.userID).get()
++
++        #expect(fixture.lookup.requests.isEmpty)
++        let arguments = try #require(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdReceivedArguments)
++        #expect(arguments.username == CHIICHUsernameLookupFixture.userID)
++        #expect(arguments.deviceId == "EXISTINGDEVICE")
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test
++    func unknownAliasMakesOneLegacyLoginAttemptWithoutCreatingAnAccount() async throws {
++        let fixture = CHIICHUsernameLoginFixture(lookup: .init(result: .failure(.notFound)))
++        try await fixture.configure()
++        // An existing historical localpart can still authenticate through the SDK.
++        fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdClosure = { username, _, _, _ in
++            #expect(username == "Alice")
++        }
++        _ = try await fixture.login(username: "Alice").get()
++
++        #expect(fixture.lookup.requests.count == 1)
++        #expect(fixture.lookup.requests.allSatisfy { $0.httpMethod == "GET" && $0.httpBody == nil })
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test
++    func rejectedUnknownAliasDoesNotCommitOrRetry() async throws {
++        let fixture = CHIICHUsernameLoginFixture(lookup: .init(result: .failure(.notFound)))
++        try await fixture.configure()
++        #expect(await fixture.login(username: "unknown").usernameLoginFailure != nil)
++        await Task.yield()
++
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++        #expect(fixture.lookup.requests.count == 1)
++    }
++
++    @Test
++    func networkFailureNeverSendsThePasswordAndReleasesTheLockForRetry() async throws {
++        let fixture = CHIICHUsernameLoginFixture(lookup: .init(result: .failure(.uncertain)))
++        try await fixture.configure()
++        #expect(await fixture.login(username: "ivan").usernameLoginFailure != nil)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++
++        fixture.lookup.result = .success(CHIICHUsernameLookupFixture.response)
++        _ = try await fixture.login(username: "ivan").get()
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test
++    func lookupParticipatesInTheExistingAuthenticationExclusion() async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        let gate = CHIICHUsernameLookupGate()
++        fixture.lookup.gate = gate
++        try await fixture.configure()
++        let homeserver = fixture.service.homeserver.value
++        let operation = Task { await fixture.login(username: "ivan") }
++        await gate.waitUntilEntered()
++        let callback = try #require(SSOCallback(scheme: "one.chiich.app"))
++        #expect(await fixture.service.beginSSOLogin(provider: .apple, callback: callback).usernameLoginFailure != nil)
++        #expect(await fixture.login(username: "different").usernameLoginFailure != nil)
++        #expect(await fixture.service.configure(for: "company.com", flow: .login).usernameLoginFailure != nil)
++        fixture.service.reset()
++        #expect(fixture.service.homeserver.value == homeserver)
++        #expect(fixture.lookup.requests.count == 1)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++        #expect(fixture.client.startSsoLoginRedirectUrlIdpIdCallsCount == 0)
++
++        await gate.release()
++        _ = try await operation.value.get()
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test
++    func cancellationDiscardsALateLookupWithoutSendingAPassword() async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        let gate = CHIICHUsernameLookupGate()
++        fixture.lookup.gate = gate
++        try await fixture.configure()
++        let operation = Task { await fixture.login(username: "ivan") }
++        await gate.waitUntilEntered()
++        operation.cancel()
++        await gate.release()
++        #expect(await operation.value.usernameLoginFailure != nil)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++
++        fixture.lookup.gate = nil
++        _ = try await fixture.login(username: "ivan").get()
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test(arguments: ["ivan", "@existing=40email:chat.chiich.one"])
++    func cancellationDuringSDKExchangeLogsOutBeforeSessionCommit(_ username: String) async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        let gate = CHIICHUsernameLookupGate()
++        try await fixture.configure()
++        fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdClosure = { _, _, _, _ in
++            await gate.suspend()
++            fixture.client.userIdReturnValue = CHIICHUsernameLookupFixture.userID
++        }
++        let operation = Task { await fixture.login(username: username) }
++        await gate.waitUntilEntered()
++        operation.cancel()
++        await gate.release()
++        #expect(await operation.value.usernameLoginFailure != nil)
++        #expect(fixture.client.logoutCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++    }
++
++    @Test
++    func cancellationDuringVerificationLogsOutBeforeSessionCommit() async throws {
++        let configuration = ClientFactoryMock.Configuration()
++        let client = try #require(configuration.homeserverClients["matrix.org"])
++        let encryption = EncryptionSDKMock()
++        client.encryptionReturnValue = encryption
++        let manager = UserSessionManagerMock(.init())
++        let classic = ClassicAppManagerMock(.init(accounts: [.mockAlice], availableSecrets: .complete,
++                                                  secretsBundle: SecretsBundleWithUserIdSDKMock()))
++        let service = AuthenticationService(userSessionManager: manager,
++                                            encryptionKeyProvider: MockEncryptionKeyProvider(),
++                                            classicAppManager: classic,
++                                            clientFactory: ClientFactoryMock(configuration),
++                                            appSettings: .volatile(),
++                                            appHooks: AppHooks())
++        await service.setupClassicAppAccountState()
++        try #require(service.classicAppAccount?.state.availableSecrets == .complete)
++        try await service.configure(for: "matrix.org", flow: .login).get()
++        let gate = CHIICHUsernameLookupGate()
++        encryption.importSecretsBundleSecretsBundleClosure = { _ in await gate.suspend() }
++        let operation = Task { await service.login(username: "alice", password: "12345678", initialDeviceName: nil, deviceID: nil) }
++        await gate.waitUntilEntered()
++        operation.cancel()
++        await gate.release()
++        #expect(await operation.value.usernameLoginFailure != nil)
++        #expect(client.logoutCallsCount == 1)
++        #expect(manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++    }
++
++    @Test
++    func cancellationAfterNativeCommitStartsStillDeliversThePersistedSession() async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        try await fixture.configure()
++        let gate = CHIICHUsernameLookupGate()
++        let session = UserSessionMock(.init())
++        fixture.manager.userSessionForSessionDirectoriesPassphraseClosure = { _, _, _ in
++            await gate.suspend()
++            return .success(session)
++        }
++        let operation = Task { await fixture.login(username: "ivan") }
++        await gate.waitUntilEntered()
++        operation.cancel()
++        await gate.release()
++        _ = try await operation.value.get()
++        #expect(fixture.client.logoutCallsCount == 0)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 1)
++    }
++
++    @Test
++    func aDifferentAuthenticatedAccountCannotReplaceTheResolvedOwner() async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        try await fixture.configure()
++        fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdClosure = { _, _, _, _ in
++            fixture.client.userIdReturnValue = "@different:chat.chiich.one"
++        }
++        #expect(await fixture.login(username: "ivan").usernameLoginFailure == .invalidCredentials)
++        #expect(fixture.client.logoutCallsCount == 1)
++        #expect(fixture.manager.userSessionForSessionDirectoriesPassphraseCallsCount == 0)
++    }
++
++    @Test
++    func unsupportedPasswordCapabilityNeverStartsTheLookup() async throws {
++        let fixture = CHIICHUsernameLoginFixture()
++        let details = try #require(fixture.client.homeserverLoginDetailsReturnValue as? HomeserverLoginDetailsSDKMock)
++        details.supportsPasswordLoginReturnValue = false
++        try await fixture.configure()
++        #expect(await fixture.login(username: "ivan").usernameLoginFailure != nil)
++        #expect(fixture.lookup.requests.isEmpty)
++        #expect(fixture.client.loginUsernamePasswordInitialDeviceNameDeviceIdCallsCount == 0)
++    }
++}
++
++@MainActor
++private struct CHIICHUsernameLoginFixture {
++    static let password = "synthetic-password-only"
++    let client: ClientSDKMock
++    let manager: UserSessionManagerMock
++    let service: AuthenticationService
++    let lookup: CHIICHUsernameLookupFixture
++
++    init(lookup: CHIICHUsernameLookupFixture = .init()) {
++        self.lookup = lookup
++        var clientConfiguration = ClientSDKMock.Configuration()
++        clientConfiguration.serverName = "chat.chiich.one"
++        clientConfiguration.homeserverURL = "https://matrix.chiich.one"
++        clientConfiguration.oAuthLoginURL = nil
++        clientConfiguration.validCredentials = (CHIICHUsernameLookupFixture.userID, Self.password)
++        client = ClientSDKMock(clientConfiguration)
++        let details = client.homeserverLoginDetailsReturnValue as? HomeserverLoginDetailsSDKMock
++        details?.supportsSsoLoginReturnValue = true
++        var factoryConfiguration = ClientFactoryMock.Configuration()
++        factoryConfiguration.homeserverClients["chat.chiich.one"] = client
++        manager = UserSessionManagerMock(.init())
++        service = AuthenticationService(userSessionManager: manager,
++                                        encryptionKeyProvider: MockEncryptionKeyProvider(),
++                                        classicAppManager: nil,
++                                        clientFactory: ClientFactoryMock(factoryConfiguration),
++                                        passwordLoginResolver: lookup.resolver,
++                                        appSettings: .volatile(),
++                                        appHooks: AppHooks())
++    }
++
++    func configure() async throws {
++        try await service.configure(for: "chat.chiich.one", flow: .login).get()
++    }
++
++    func login(username: String) async -> Result<UserSessionProtocol, AuthenticationServiceError> {
++        await service.login(username: username, password: Self.password, initialDeviceName: "Synthetic iPhone", deviceID: "EXISTINGDEVICE")
++    }
++}
++
++private extension Result {
++    var usernameLoginFailure: Failure? {
++        if case .failure(let error) = self { return error }
++        return nil
++    }
++}

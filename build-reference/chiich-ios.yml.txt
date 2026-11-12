@@ -1,0 +1,307 @@
+name: CHIICH iOS simulator
+
+on:
+  push:
+    branches: [feature/chiich-element-x-ios]
+    paths: [src/element-x-ios/**, .github/workflows/chiich-ios.yml]
+  pull_request:
+    paths: [src/element-x-ios/**, .github/workflows/chiich-ios.yml]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chiich-ios-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  simulator:
+    runs-on: xcode-27
+    timeout-minutes: 60
+    steps:
+      - name: Checkout CHIICH source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          persist-credentials: false
+      - name: Validate source and web compatibility before the native build
+        run: |
+          node -e 'if (Number(process.versions.node.split(".")[0]) < 22) throw new Error("CHIICH requires Node >=22")'
+          npm run check
+          npm test
+          npm run build
+      - name: Checkout pinned public Element X
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+        with:
+          repository: element-hq/element-x-ios
+          ref: 27cdd980dcce083b939935521fdcc9a754e18244
+          path: .build/chiich-ios
+          persist-credentials: false
+          submodules: false
+      - name: Prepare Xcode and native generators
+        run: |
+          sudo xcode-select -s /Applications/Xcode_27.app
+          brew install xcodegen swiftgen sourcery git-lfs
+          git -C .build/chiich-ios lfs pull --include='Components/DevelopmentAssets/Media/**' --exclude=''
+          python3 src/element-x-ios/prepare.py --source .build/chiich-ios
+      - name: Record native toolchain and test runtime
+        run: |
+          xcodebuild -version
+          swift --version
+          python3 --version
+          xcodegen --version
+          swiftgen --version
+          sourcery --version
+          git lfs version
+          xcrun simctl list runtimes
+          xcrun simctl list devices 'iOS 27.0' available
+      - name: Verify native source, signing boundaries and TestFlight helper without credentials
+        run: |
+          python3 -m unittest discover -s src/element-x-ios -p 'test_*.py'
+          python3 -m unittest discover -s scripts/testflight_release -p 'test_*.py'
+          swiftc scripts/testflight_release/apple_token.swift -o "$RUNNER_TEMP/chiich-apple-token"
+          "$RUNNER_TEMP/chiich-apple-token" --self-test
+      - name: Generate upstream Xcode project
+        working-directory: .build/chiich-ios
+        run: xcodegen
+      - name: Build unsigned simulator app
+        working-directory: .build/chiich-ios
+        run: >-
+          set -o pipefail; xcodebuild -quiet -project ElementX.xcodeproj -scheme ElementX
+          -configuration Debug
+          -destination 'generic/platform=iOS Simulator'
+          -derivedDataPath ../DerivedData
+          -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile
+          ARCHS=arm64 ONLY_ACTIVE_ARCH=YES
+          CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ../native-build.log
+      - name: Preserve native build diagnostics
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-build-log
+          path: .build/native-build.log
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Run focused native authentication and receiver AI tests
+        working-directory: .build/chiich-ios
+        run: |
+          mkdir -p ../TestResults
+          xcodebuild -quiet test \
+            -project ElementX.xcodeproj \
+            -scheme UnitTests \
+            -configuration Debug \
+            -destination 'platform=iOS Simulator,name=iPhone 17,OS=27.0,arch=arm64' \
+            -derivedDataPath ../DerivedData \
+            -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile \
+            -resultBundlePath ../TestResults/SSO.xcresult \
+            -only-testing:UnitTests/SSOCallbackTests \
+            -only-testing:UnitTests/CHIICHManagedAccountProviderTests \
+            -only-testing:UnitTests/CHIICHLoginEntryTests \
+            -only-testing:UnitTests/CHIICHOnboardingTests \
+            -only-testing:UnitTests/CHIICHNativeServicesTests \
+            -only-testing:UnitTests/CHIICHReceiverAIRequestTests \
+            -only-testing:UnitTests/CHIICHReceiverAIServiceTests \
+            -only-testing:UnitTests/CHIICHReceiverAIPreferencesTests \
+            -only-testing:UnitTests/CHIICHIdentityRequestTests \
+            -only-testing:UnitTests/CHIICHIdentitySettingsTests \
+            -only-testing:UnitTests/UserProfileScreenViewModelTests \
+            -only-testing:UnitTests/CHIICHIdentityRoutingTests \
+            -only-testing:UnitTests/CHIICHAppURLFallbackTests \
+            -only-testing:UnitTests/CHIICHPasswordRequestTests \
+            -only-testing:UnitTests/CHIICHPasswordServiceTests \
+            -only-testing:UnitTests/CHIICHPasswordLoginResolverTests \
+            -only-testing:UnitTests/CHIICHUsernameLoginTests \
+            -only-testing:UnitTests/MediaUploadPreviewScreenViewModelTests \
+            -only-testing:UnitTests/ComposerToolbarViewModelTests \
+            -only-testing:UnitTests/CHIICHMessageDisclosureTests \
+            -only-testing:UnitTests/HomeScreenViewModelTests \
+            -only-testing:UnitTests/SSOAuthenticationTests \
+            -only-testing:UnitTests/SSOPasswordFallbackTests \
+            -only-testing:UnitTests/AuthenticationServiceTests \
+            -only-testing:UnitTests/LoginScreenViewModelTests \
+            -only-testing:UnitTests/SoftLogoutScreenViewModelTests \
+            -parallel-testing-enabled NO \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM=
+      - name: Verify native test execution count
+        run: |
+          xcrun xcresulttool get test-results summary --path .build/TestResults/SSO.xcresult > .build/TestResults/SSO-summary.json
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('.build/TestResults/SSO-summary.json').read_text())
+          assert summary.get('totalTestCount', 0) >= 200, summary
+          assert summary.get('failedTests', 0) == 0, summary
+          print(json.dumps(summary, indent=2))
+          PY
+      - name: Preserve native SSO test results
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-SSO-tests
+          path: .build/TestResults/
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Prepare native preview recording
+        run: python3 src/element-x-ios/capture_previews.py prepare --source .build/chiich-ios
+      - name: Capture CHIICH native screens in Russian
+        working-directory: .build/chiich-ios
+        run: |
+          chiich_preview_device="$(xcrun simctl create 'CHIICH Preview' com.apple.CoreSimulator.SimDeviceType.iPhone-SE-3rd-generation com.apple.CoreSimulator.SimRuntime.iOS-27-0)"
+          xcodebuild -quiet test \
+            -project ElementX.xcodeproj \
+            -scheme PreviewTests \
+            -configuration Debug \
+            -destination "platform=iOS Simulator,id=$chiich_preview_device" \
+            -derivedDataPath ../DerivedData \
+            -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile \
+            -resultBundlePath ../TestResults/NativePreviews.xcresult \
+            '-only-testing:PreviewTests/PreviewTests/chiichNativeExperience()' \
+            '-only-testing:PreviewTests/PreviewTests/chiichMessageDisclosure()' \
+            '-only-testing:PreviewTests/PreviewTests/chiichLogin()' \
+            '-only-testing:PreviewTests/PreviewTests/chiichHomeControls()' \
+            '-only-testing:PreviewTests/PreviewTests/cHIICHIdentitySettings()' \
+            '-only-testing:PreviewTests/PreviewTests/cHIICHPasswordScreen()' \
+            '-only-testing:PreviewTests/PreviewTests/chiichReceiverAILanguages()' \
+            -parallel-testing-enabled NO \
+            ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            DEVELOPMENT_TEAM=
+      - name: Record native preview execution summary
+        if: always()
+        run: |
+          if test -d .build/TestResults/NativePreviews.xcresult; then
+            xcrun xcresulttool get test-results summary --path .build/TestResults/NativePreviews.xcresult > .build/TestResults/NativePreviews-summary.json
+          fi
+      - name: Verify and export native preview images
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          summary = json.loads(Path('.build/TestResults/NativePreviews-summary.json').read_text())
+          assert summary.get('totalTestCount', 0) == 7, summary
+          assert summary.get('passedTests', 0) == 7, summary
+          assert summary.get('failedTests', 0) == 0, summary
+          assert summary.get('skippedTests', 0) == 0, summary
+          print(json.dumps(summary, indent=2))
+          PY
+          python3 src/element-x-ios/capture_previews.py export --source .build/chiich-ios --output .build/NativePreviews
+          cp .build/TestResults/NativePreviews-summary.json .build/NativePreviews/summary.json
+      - name: Preserve native preview evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-native-previews
+          path: |
+            .build/NativePreviews/
+            .build/TestResults/NativePreviews.xcresult/
+            .build/TestResults/NativePreviews-summary.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Prepare full-session UI checks in Russian
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          path = Path('.build/chiich-ios/UITests/SupportingFiles/UITests.xctestplan')
+          plan = json.loads(path.read_text())
+          language = next(item for item in plan['configurations'] if item['name'] == 'English')
+          language['name'] = 'Russian'
+          language['options'].update({'language': 'ru', 'region': 'RU'})
+          plan['configurations'] = [language]
+          # The first iPad app launch took 74 seconds on the pinned runner.
+          # Keep individual UI assertions bounded while allowing the complete flow.
+          plan['defaultOptions']['defaultTestExecutionTimeAllowance'] = 240
+          path.write_text(json.dumps(plan, indent=2) + '\n')
+          PY
+      - name: Verify native chat controls in the full iPhone and iPad session
+        id: native-controls
+        working-directory: .build/chiich-ios
+        run: |
+          chiich_ui_failed=0
+          for chiich_ui_device in 'iPhone 17' 'iPad (A16)'; do
+            if test "$chiich_ui_device" = 'iPhone 17'; then
+              chiich_ui_result=Controls-iPhone
+            else
+              chiich_ui_result=Controls-iPad
+            fi
+            xcodebuild -quiet test \
+              -project ElementX.xcodeproj \
+              -scheme UITests \
+              -configuration Debug \
+              -destination "platform=iOS Simulator,name=$chiich_ui_device,OS=27.0,arch=arm64" \
+              -derivedDataPath ../DerivedData \
+              -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile \
+              -resultBundlePath "../TestResults/$chiich_ui_result.xcresult" \
+              -only-testing:UITests/ChiichHomeControlsTests \
+              -parallel-testing-enabled NO \
+              ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
+              CODE_SIGNING_ALLOWED=NO \
+              CODE_SIGNING_REQUIRED=NO \
+              DEVELOPMENT_TEAM= || chiich_ui_failed=1
+            if test -d "../TestResults/$chiich_ui_result.xcresult"; then
+              xcrun xcresulttool get test-results summary \
+                --path "../TestResults/$chiich_ui_result.xcresult" \
+                > "../TestResults/$chiich_ui_result-summary.json"
+              cat "../TestResults/$chiich_ui_result-summary.json"
+            fi
+          done
+          exit "$chiich_ui_failed"
+      - name: Export full-session UI evidence
+        if: always() && steps.native-controls.outcome != 'skipped'
+        run: |
+          xcrun xcresulttool export attachments --help
+          for chiich_ui_result in Controls-iPhone Controls-iPad; do
+            if test -d ".build/TestResults/$chiich_ui_result.xcresult"; then
+              xcrun xcresulttool get test-results summary \
+                --path ".build/TestResults/$chiich_ui_result.xcresult" \
+                > ".build/TestResults/$chiich_ui_result-summary.json"
+              xcrun xcresulttool export attachments \
+                --path ".build/TestResults/$chiich_ui_result.xcresult" \
+                --output-path ".build/NativeControls/$chiich_ui_result"
+            fi
+          done
+      - name: Verify full-session test execution counts
+        run: |
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          for device in ('iPhone', 'iPad'):
+              summary = json.loads(Path(f'.build/TestResults/Controls-{device}-summary.json').read_text())
+              assert summary.get('totalTestCount', 0) == 4, summary
+              assert summary.get('passedTests', 0) == 4, summary
+              assert summary.get('failedTests', 0) == 0, summary
+              assert summary.get('skippedTests', 0) == 0, summary
+              print(json.dumps(summary, indent=2))
+          PY
+      - name: Preserve full-session chat controls evidence
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-native-controls
+          path: |
+            .build/NativeControls/
+            .build/TestResults/Controls-iPhone.xcresult/
+            .build/TestResults/Controls-iPhone-summary.json
+            .build/TestResults/Controls-iPad.xcresult/
+            .build/TestResults/Controls-iPad-summary.json
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Preserve simulator build
+        run: |
+          ditto -c -k --sequesterRsrc --keepParent \
+            .build/DerivedData/Build/Products/Debug-iphonesimulator/ElementX.app \
+            .build/CHIICH-Simulator.zip
+          chiich_bundle_verify="$(mktemp -d)"
+          ditto -x -k .build/CHIICH-Simulator.zip "$chiich_bundle_verify"
+          test -x "$chiich_bundle_verify/ElementX.app/ElementX"
+      - name: Upload packaged simulator build
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-Simulator
+          path: .build/CHIICH-Simulator.zip
+          retention-days: 7
+          if-no-files-found: error
