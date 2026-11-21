@@ -38,6 +38,8 @@ struct LoginScreenViewState: BindableState {
     var window: UIWindow?
     /// Password fallback signs in an existing account; it never registers one.
     var allowsPasswordFallback = false
+    var allowsCHIICHRegistration = false
+    var didRegisterAccount = false
     var isPasswordLoginExpanded = false
     /// View state that can be bound to from SwiftUI.
     var bindings = LoginScreenBindings()
@@ -78,6 +80,7 @@ struct LoginScreenBindings {
 enum LoginScreenViewAction {
     /// Discover the fixed provider, or retry a failed discovery without leaving this screen.
     case configureAccountProvider
+    case signInAfterRegistration
     case togglePasswordLogin
     case updateWindow(UIWindow?)
     case continueWithSSO(SSOIdentityProvider)

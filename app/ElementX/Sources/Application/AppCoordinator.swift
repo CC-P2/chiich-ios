@@ -1044,6 +1044,11 @@ class AppCoordinator: AppCoordinatorProtocol, AuthenticationFlowCoordinatorDeleg
             .sink { [weak self] callback in
                 guard let self else { return }
                 switch callback {
+                case .didConfirmCHIICHAccountClosure(let clientIdentity):
+                    // A queued completion from an old client must never sign out a newly selected/restored session.
+                    guard let activeClient = userSessionManager.activeSession?.clientProxy,
+                          ObjectIdentifier(activeClient) == clientIdentity else { return }
+                    stateMachine.processEvent(.signOut(isSoft: false, disableAppLock: false))
                 case .didReceiveAuthError(let userID, let isSoftLogout):
                     // Only the active account can be signed out for now.
                     guard userID == userSessionManager.activeSession?.clientProxy.userID else {

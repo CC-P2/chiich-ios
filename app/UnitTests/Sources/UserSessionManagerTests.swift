@@ -314,6 +314,25 @@ struct UserSessionManagerTests {
         try await deferredFailure.fulfill()
     }
     
+    @Test
+    func confirmedClosurePreservesClientIdentityAcrossTheManager() async throws {
+        let manager = makeManager(userIDs: ["@fixture:chat.chiich.one"])
+        let original = makeUserSession(userID: "@fixture:chat.chiich.one")
+        manager.add(original)
+        let identity = ObjectIdentifier(original.clientProxy)
+        let delivered = deferFulfillment(manager.callbacksPublisher) {
+            $0 == .didConfirmCHIICHAccountClosure(clientIdentity: identity)
+        }
+        original.callbacks.send(.didConfirmCHIICHAccountClosure)
+        try await delivered.fulfill()
+        let replacement = makeUserSession(userID: "@fixture:chat.chiich.one")
+        #expect(ObjectIdentifier(replacement.clientProxy) != identity)
+        let noStaleCallback = deferFailure(manager.callbacksPublisher, timeout: .seconds(1)) { _ in true }
+        manager.add(replacement)
+        original.callbacks.send(.didConfirmCHIICHAccountClosure)
+        try await noStaleCallback.fulfill()
+    }
+
     // MARK: - Helpers
     
     private func makeManager(userIDs: [String]) -> UserSessionManager {

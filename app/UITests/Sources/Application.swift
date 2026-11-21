@@ -10,12 +10,12 @@ import SnapshotTesting
 import XCTest
 
 enum Application {
-    static func launch(_ identifier: UITestsScreenIdentifier, disableTimelineAccessibility: Bool = true) -> XCUIApplication {
+    static func launch(_ identifier: UITestsScreenIdentifier, disableTimelineAccessibility: Bool = true, storeCapture: Bool = false) -> XCUIApplication {
         if ProcessInfo().environment["RECORD_FAILURES"].map(Bool.init) == true {
             XCUIApplication.recordMode = .failed
         }
         
-        checkEnvironments()
+        checkEnvironments(storeCapture: storeCapture)
         
         let app = XCUIApplication()
         
@@ -26,13 +26,17 @@ enum Application {
         if disableTimelineAccessibility {
             launchEnvironment["UI_TESTS_DISABLE_TIMELINE_ACCESSIBILITY"] = "1"
         }
+        // Only the existing UI-test coordinator reads this explicit capture flag.
+        if storeCapture {
+            launchEnvironment["CHIICH_STORE_CAPTURE"] = "1"
+        }
         
         app.launchEnvironment = launchEnvironment
         app.launch()
         return app
     }
     
-    private static func checkEnvironments() {
+    private static func checkEnvironments(storeCapture: Bool) {
         let requirediPhoneSimulator = "iPhone18,3" // iPhone 17
         let requirediPadSimulator = "iPad15,7" // iPad (A16)
         let requiredOSVersion = (major: 27, minor: 0)
@@ -45,7 +49,10 @@ enum Application {
         guard let deviceModel = ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] else {
             fatalError("Unknown simulator.")
         }
-        guard deviceModel == requirediPhoneSimulator || deviceModel == requirediPadSimulator else {
+        // Dedicated Store captures select exact devices and verify output dimensions in
+        // capture_store_screenshots.sh. Keep regression snapshot devices unchanged.
+        let isStoreCaptureDevice = storeCapture && [.phone, .pad].contains(UIDevice.current.userInterfaceIdiom)
+        guard deviceModel == requirediPhoneSimulator || deviceModel == requirediPadSimulator || isStoreCaptureDevice else {
             fatalError("Running on \(deviceModel) but we only support \(requirediPhoneSimulator) and \(requirediPadSimulator).")
         }
     }

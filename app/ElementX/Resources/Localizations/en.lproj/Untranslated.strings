@@ -47,7 +47,7 @@
 "screen_chiich_ai_consent_decline" = "Continue without AI";
 "screen_chiich_ai_consent_disable" = "Turn off AI and withdraw permission";
 "screen_chiich_ai_consent_sync_failure" = "Your choice hasn’t synced with the server. Retry when you’re online to apply it for other participants.";
-"screen_chiich_ai_consent_summary" = "Message translation, rewriting, transcription and AI planner support require sending data to an external AI processor.";
+"screen_chiich_ai_consent_summary" = "Message translation, rewriting, transcription and AI planner support require sending data to an external AI processor, ProxyAPI, which forwards it to model providers including OpenAI.";
 "screen_chiich_ai_consent_optional" = "You can chat without AI. Change your choice in Settings at any time.";
 "screen_chiich_ai_consent_details" = "About the technology";
 "screen_chiich_ai_consent_no" = "Without AI";

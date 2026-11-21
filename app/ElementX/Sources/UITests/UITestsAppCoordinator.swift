@@ -614,14 +614,16 @@ class MockScreen: Identifiable {
                                                                             userSession: UserSessionMock(.init()))
             return SessionVerificationScreenCoordinator(parameters: parameters)
         case .userSessionScreen, .userSessionScreenReply, .userSessionSpacesFlow, .chiichHomeControls, .chiichHomeControlsGraphite, .chiichHomeControlsInlineSearch:
-            let userID = "@mock:client.com"
+            let isCHIICHHomeControls = id == .chiichHomeControls || id == .chiichHomeControlsGraphite || id == .chiichHomeControlsInlineSearch
+            // Only explicit UI-test capture launches use curated content; regression launches keep their fixtures.
+            let isCHIICHStoreCapture = isCHIICHHomeControls && ProcessInfo.processInfo.environment["CHIICH_STORE_CAPTURE"] == "1"
+            let userID = isCHIICHStoreCapture ? CHIICHStoreScreenshotFixture.userID : "@mock:client.com"
             let userSettings = appSettings.userSettings(for: userID)
             userSettings.account.hasRunIdentityConfirmationOnboarding = true
             userSettings.app.hasRunNotificationPermissionsOnboarding = true
             userSettings.app.analyticsConsentState = .optedOut
             
-            let isCHIICHHomeControls = id == .chiichHomeControls || id == .chiichHomeControlsGraphite || id == .chiichHomeControlsInlineSearch
-            let hasSpaces = id == .userSessionSpacesFlow || isCHIICHHomeControls
+            let hasSpaces = !isCHIICHStoreCapture && (id == .userSessionSpacesFlow || isCHIICHHomeControls)
             if isCHIICHHomeControls {
                 userSettings.app.globalSearchEnabled = id != .chiichHomeControlsInlineSearch
                 userSettings.app.mentionsFilterEnabled = true
@@ -629,19 +631,29 @@ class MockScreen: Identifiable {
                 userSettings.app.appAppearance = id == .chiichHomeControlsGraphite ? .dark : .light
             }
             
-            let roomSummaries: [RoomSummary] = if hasSpaces {
+            let roomSummaries: [RoomSummary] = if isCHIICHStoreCapture {
+                CHIICHStoreScreenshotFixture.rooms
+            } else if hasSpaces {
                 [[RoomSummary].mockSpaceInvites[0]] + .mockRooms
             } else {
                 .mockRooms
             }
             
-            let clientProxy = ClientProxyMock(.init(userID: userID,
-                                                    deviceID: "MOCKCLIENT",
-                                                    roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(roomSummaries))),
-                                                    spaceServiceConfiguration: .init(topLevelSpaces: .mockSpaceList.filter(\.isSpace) + .mockSingleRoom),
-                                                    roomPreviews: [SpaceServiceRoom].mockSpaceList.map { RoomPreviewProxyMock(spaceServiceRoom: $0) },
-                                                    defaultRoomMembers: .allMembersAsAdmin))
-            clientProxy.recentlyVisitedRoomsFilterReturnValue = .mockRooms
+            var clientConfiguration = ClientProxyMockConfiguration(userID: userID,
+                                                                    deviceID: "MOCKCLIENT",
+                                                                    roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(roomSummaries))),
+                                                                    spaceServiceConfiguration: .init(topLevelSpaces: .mockSpaceList.filter(\.isSpace) + .mockSingleRoom),
+                                                                    roomPreviews: [SpaceServiceRoom].mockSpaceList.map { RoomPreviewProxyMock(spaceServiceRoom: $0) },
+                                                                    defaultRoomMembers: .allMembersAsAdmin)
+            if isCHIICHStoreCapture {
+                clientConfiguration.displayName = CHIICHStoreScreenshotFixture.displayName
+                clientConfiguration.status = CHIICHStoreScreenshotFixture.status
+                clientConfiguration.spaceServiceConfiguration = .init()
+                clientConfiguration.roomPreviews = []
+                clientConfiguration.defaultRoomMembers = []
+            }
+            let clientProxy = ClientProxyMock(clientConfiguration)
+            clientProxy.recentlyVisitedRoomsFilterReturnValue = isCHIICHStoreCapture ? CHIICHStoreScreenshotFixture.recentlyVisitedRooms(from: roomSummaries) : .mockRooms
             
             if isCHIICHHomeControls {
                 // Keep the native search coordinator and query filtering; only its SDK data is mocked.

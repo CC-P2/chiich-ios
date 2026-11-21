@@ -7,6 +7,15 @@ enum CHIICHPasswordHTTP {
 
     /// One explicit submission only. A transport failure must never automatically repeat a password change.
     static func send(_ request: URLRequest) async -> Result<CHIICHPasswordResponse, CHIICHPasswordError> {
+        await send(request, classifier: classify)
+    }
+
+    static func sendDeletion(_ request: URLRequest) async -> Result<CHIICHPasswordResponse, CHIICHPasswordError> {
+        await send(request, classifier: CHIICHDeletionResponse.classify)
+    }
+
+    static func send<Value>(_ request: URLRequest,
+                            classifier: (Data, Int) -> Result<Value, CHIICHPasswordError>) async -> Result<Value, CHIICHPasswordError> {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.urlCache = nil
         configuration.httpCookieStorage = nil
@@ -26,7 +35,7 @@ enum CHIICHPasswordHTTP {
                 data.append(byte)
             }
             try Task.checkCancellation()
-            return classify(data: data, statusCode: response.statusCode)
+            return classifier(data, response.statusCode)
         } catch is CancellationError {
             return .failure(.cancelled)
         } catch {

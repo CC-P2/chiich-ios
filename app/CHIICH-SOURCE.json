@@ -40,11 +40,47 @@
     },
     {
       "path": "patches/first-chat-consent.patch",
-      "sha256": "ab273b8953f0ca90814a438e6169a6551f17d93887b9b7794c41e56011b5e248"
+      "sha256": "27fe598b3ec6ea5d72f5519611e734c024ad96586fefd9946b5fcc437cd535ba"
     },
     {
       "path": "patches/plaintext-onboarding.patch",
       "sha256": "84e92ad7cdfc066ed066203fa43e71673af9ee3f2c29fa9402c33f1a01973583"
+    },
+    {
+      "path": "patches/privacy-manifest.patch",
+      "sha256": "419c31ff7b5d8e4a4cb6ef09a09a4bc78ade922f42bdd968c38e436fb8bfa6de"
+    },
+    {
+      "path": "patches/account-deletion.patch",
+      "sha256": "be3dd649e8c3084420495e5afd025406eb99c9836c80d9247730cd379c297940"
+    },
+    {
+      "path": "patches/call-release-guard.patch",
+      "sha256": "f7f4bf5e82a1538f781a0538d0f7be9707a28dd244c6a6a69224979e72757fe8"
+    },
+    {
+      "path": "patches/public-source-link.patch",
+      "sha256": "a2f066f03600cdd8b7737b6e0e51c819f458e7058985a01b791749a3bb47e59a"
+    },
+    {
+      "path": "patches/language-picker-appearance.patch",
+      "sha256": "db775381ab33b2705492a29e76db9757c51b205f81aede698121fb0ce9e0e13f"
+    },
+    {
+      "path": "patches/settings-add-account-localization.patch",
+      "sha256": "8b41cd22e80ba6aa76ee647aac21208b21bdc6949a019de513b16743531cfc41"
+    },
+    {
+      "path": "patches/store-capture-fixture.patch",
+      "sha256": "5bf998ebd65b5b93df917efe2f560c29a06fce7bb5e26948e047598e2fcc247f"
+    },
+    {
+      "path": "patches/account-deletion-return.patch",
+      "sha256": "ce99ffdfc9f06b16f03c35de94756efd371139d00007be2e7887886486a9ec01"
+    },
+    {
+      "path": "patches/password-registration.patch",
+      "sha256": "342308a05622041f7df4dab16fc540cca53efdb88ef2d41c8ceca8da6384b9ea"
     }
   ],
   "assets": [

@@ -49,8 +49,11 @@ final class UserSessionManager: UserSessionManagerProtocol {
             .map { userSessions in
                 Publishers.MergeMany(userSessions.map { userSession in
                     let userID = userSession.clientProxy.userID
+                    let clientIdentity = ObjectIdentifier(userSession.clientProxy)
                     return userSession.callbacks.map { callback in
                         switch callback {
+                        case .didConfirmCHIICHAccountClosure:
+                            UserSessionManagerCallback.didConfirmCHIICHAccountClosure(clientIdentity: clientIdentity)
                         case .didReceiveAuthError(let isSoftLogout):
                             UserSessionManagerCallback.didReceiveAuthError(userID: userID, isSoftLogout: isSoftLogout)
                         }

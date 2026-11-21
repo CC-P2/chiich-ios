@@ -15,11 +15,14 @@ struct LoginScreen: View {
     /// The focus state of the password text field.
     @FocusState private var isPasswordFocused: Bool
     
+    @State private var showingRegistration = false
+
     @Bindable var context: LoginScreenViewModel.Context
     
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
+                CHIICHDeletionNoticeView()
                 header
                     .padding(.top, 44)
                     .padding(.bottom, 40)
@@ -41,7 +44,19 @@ struct LoginScreen: View {
                             .accessibilityIdentifier("chiich.login.retry")
                     }
                 case .ready:
+                    if context.viewState.didRegisterAccount {
+                        Text(CHIICHRegistration.text("created"))
+                            .font(.compound.bodyMD)
+                            .padding(.bottom, 12)
+                    }
                     authenticationOptions
+                    if context.viewState.allowsCHIICHRegistration, context.viewState.homeserver.supportsPasswordLogin {
+                        Button(CHIICHRegistration.text("create")) { showingRegistration = true }
+                            .buttonStyle(.compound(.secondary))
+                            .padding(.top, 16)
+                            .disabled(context.viewState.isLoading)
+                            .accessibilityIdentifier("chiich.login.registerWithPassword")
+                    }
                 }
 
                 Link(L10n.commonPrivacyPolicy, destination: AppSettings.chiichPrivacyURL)
@@ -57,6 +72,14 @@ struct LoginScreen: View {
         .scrollDismissesKeyboard(.interactively)
         .background(Color.compound.bgCanvasDefault.ignoresSafeArea())
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showingRegistration) {
+            CHIICHRegistrationScreen { userID, password in
+                context.username = userID
+                context.password = password
+                showingRegistration = false
+                context.send(viewAction: .signInAfterRegistration)
+            }
+        }
         .alert(item: $context.alertInfo)
         .introspect(.window, on: .supportedVersions) { window in
             context.send(viewAction: .updateWindow(window))

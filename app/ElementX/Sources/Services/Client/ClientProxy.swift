@@ -18,6 +18,7 @@ class ClientProxy: ClientProxyProtocol {
     private let client: ClientProtocol
     private let networkMonitor: NetworkMonitorProtocol
     private let userSettings: UserSettings
+    private let deletionRecovery = CHIICHDeletionRecovery()
     private let analyticsService: AnalyticsServiceProtocol
     
     let mediaLoader: MediaLoaderProtocol
@@ -460,6 +461,44 @@ class ClientProxy: ClientProxyProtocol {
                                              return .failure(.invalidPassword)
                                          }
                                      })
+    }
+
+    var supportsCHIICHDeletion: Bool { chiichPasswordIdentity() != nil }
+
+    func makeCHIICHDeletionService() -> CHIICHDeletionService? {
+        if let pending = deletionRecovery.take() { return pending }
+        guard let (initiatingSession, context) = chiichPasswordIdentity() else { return nil }
+        let initiatingHomeserver = homeserver
+        return CHIICHDeletionService(context: context,
+                                    recovery: deletionRecovery,
+                                    sessionIsCurrent: { [weak self] in
+                                        self?.chiichPasswordSessionMatches(initiatingSession, homeserver: initiatingHomeserver) == true
+                                    },
+                                    submitRequest: { [weak self] payload in
+                                        guard let self, chiichPasswordSessionMatches(initiatingSession, homeserver: initiatingHomeserver), !Task.isCancelled else {
+                                            return .failure(.sessionChanged)
+                                        }
+                                        do {
+                                            var request = try payload.urlRequest(context: context)
+                                            request.setValue("Bearer \(initiatingSession.accessToken)", forHTTPHeaderField: "Authorization")
+                                            // Retain this client until the one request settles, independently of navigation teardown.
+                                            let result = await CHIICHPasswordHTTP.sendDeletion(request)
+                                            if case .failure(.matrixUnknownToken(let softLogout)) = result,
+                                               chiichPasswordSessionMatches(initiatingSession, homeserver: initiatingHomeserver) {
+                                                hasEncounteredAuthError = true
+                                                actionsSubject.send(.receivedAuthError(isSoftLogout: softLogout))
+                                            }
+                                            return result
+                                        } catch { return .failure(.invalidResponse) }
+                                    },
+                                    confirmedSuccess: { [weak self] in
+                                        CHIICHDeletionNotice.recordConfirmedResponse()
+                                        // No global forceLogout: only the exact initiating local SDK account may be cleaned up.
+                                        // If sync already revoked it, native teardown is already in progress.
+                                        guard let self, chiichPasswordSessionMatches(initiatingSession, homeserver: initiatingHomeserver) else { return }
+                                        hasEncounteredAuthError = true
+                                        actionsSubject.send(.confirmedCHIICHAccountClosure)
+                                    })
     }
 
     private func chiichPasswordIdentity() -> (Session, CHIICHPasswordContext)? {

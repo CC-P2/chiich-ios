@@ -59,6 +59,10 @@ class UserSession: UserSessionProtocol {
                 switch callback {
                 case .receivedSyncUpdate:
                     Task { [weak self] in await self?.chiichReceiverAI?.synchronizePreferences(accountDataSynced: true) }
+                case .confirmedCHIICHAccountClosure:
+                    chiichReceiverAI?.invalidate()
+                    callbacks.send(.didConfirmCHIICHAccountClosure)
+                    authErrorCancellable = nil
                 case .receivedAuthError(let isSoftLogout):
                     chiichReceiverAI?.invalidate()
                     callbacks.send(.didReceiveAuthError(isSoftLogout: isSoftLogout))

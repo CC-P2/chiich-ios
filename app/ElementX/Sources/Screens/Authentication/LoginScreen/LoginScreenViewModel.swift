@@ -44,6 +44,8 @@ class LoginScreenViewModel: LoginScreenViewModelType, LoginScreenViewModelProtoc
         let viewState = LoginScreenViewState(homeserver: authenticationService.homeserver.value,
                                              configurationState: initialAccountProvider == nil ? .ready : .loading,
                                              allowsPasswordFallback: authenticationService.flow == .login,
+                                             allowsCHIICHRegistration: !appSettings.allowOtherAccountProviders
+                                                 && appSettings.accountProviders.contains(serverName: "chat.chiich.one", orBaseURL: nil),
                                              bindings: LoginScreenBindings(username: username))
         
         super.init(initialViewState: viewState)
@@ -74,6 +76,13 @@ class LoginScreenViewModel: LoginScreenViewModelType, LoginScreenViewModelProtoc
             actionsSubject.send(.continueWithSSO(provider, window))
         case .parseUsername:
             parseUsername()
+        case .signInAfterRegistration:
+            guard state.allowsCHIICHRegistration, state.configurationState == .ready,
+                  state.homeserver.supportsPasswordLogin, !state.isLoading else { return }
+            state.didRegisterAccount = true
+            state.allowsPasswordFallback = true
+            state.isPasswordLoginExpanded = true
+            login()
         case .next:
             guard state.canSubmit else { return }
             login()

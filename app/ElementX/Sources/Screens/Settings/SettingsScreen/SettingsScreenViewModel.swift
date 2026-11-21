@@ -31,7 +31,7 @@ class SettingsScreenViewModel: SettingsScreenViewModelType, SettingsScreenViewMo
                                            userProfile: userSession.clientProxy.userProfilePublisher.value,
                                            showLinkNewDeviceButton: userSettings.app.linkNewDeviceEnabled,
                                            showAddAccountButton: userSettings.app.multiAccountEnabled,
-                                           showAccountDeactivation: userSession.clientProxy.canDeactivateAccount,
+                                           showAccountDeactivation: userSession.clientProxy.supportsCHIICHDeletion || userSession.clientProxy.canDeactivateAccount,
                                            showDeveloperOptions: userSettings.app.developerOptionsEnabled,
                                            showAnalyticsSettings: userSettings.app.canPromptForAnalytics,
                                            isBugReportServiceEnabled: isBugReportServiceEnabled,

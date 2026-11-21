@@ -11,6 +11,7 @@ import MatrixRustSDK
 
 enum UserSessionManagerCallback: Equatable {
     case didReceiveAuthError(userID: String, isSoftLogout: Bool)
+    case didConfirmCHIICHAccountClosure(clientIdentity: ObjectIdentifier)
 }
 
 // sourcery: AutoMockable

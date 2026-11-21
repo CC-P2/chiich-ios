@@ -162,6 +162,36 @@ final class ChiichHomeControlsTests: XCTestCase {
         assertSpaceFilterCanBeSelectedAndCleared(app)
     }
     
+    // Existing regression methods never enable curated capture data.
+    func testStoreLightScreenshots() async throws {
+        try await captureStoreScreenshots(.chiichHomeControls, appearance: "light")
+    }
+
+    func testStoreGraphiteScreenshots() async throws {
+        try await captureStoreScreenshots(.chiichHomeControlsGraphite, appearance: "graphite")
+    }
+
+    private func captureStoreScreenshots(_ identifier: UITestsScreenIdentifier, appearance: String) async throws {
+        let app = Application.launch(identifier, storeCapture: true)
+        assertChatsAreVisible(app)
+        assertSingleHomeSearch(app)
+        let demoRoom = "Планы на выходные"
+        XCTAssertTrue(app.buttons[A11yIdentifiers.homeScreen.roomName(demoRoom)].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons[A11yIdentifiers.homeScreen.roomName(groupRoom)].exists)
+        try await attachRootScreenshot(app, name: "CHIICH-store-chats-\(appearance)")
+
+        openSettings(app)
+        XCTAssertTrue(control(Control.profile, in: app).exists)
+        try await attachRootScreenshot(app, name: "CHIICH-store-settings-\(appearance)")
+        closeSettings(app)
+
+        app.buttons[Control.search].tap()
+        assertNativeSearch(app, query: demoRoom, expectedRoom: demoRoom)
+        try await attachRootScreenshot(app, name: "CHIICH-store-search-\(appearance)")
+        closeNativeSearch(app)
+        assertChatsAreVisible(app)
+    }
+
     private func assertChatsAreVisible(_ app: XCUIApplication) {
         XCTAssertTrue(app.buttons[Control.search].waitForExistence(timeout: 10))
         XCTAssertTrue(app.buttons[Control.search].isHittable)

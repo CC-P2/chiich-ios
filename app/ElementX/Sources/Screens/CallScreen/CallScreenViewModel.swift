@@ -157,11 +157,9 @@ class CallScreenViewModel: CallScreenViewModelType, CallScreenViewModelProtocol 
         Task { [weak self] in
             guard let self else { return }
             
-            let baseURL = if let baseURLOverride = configuration.elementCallBaseURLOverride {
-                baseURLOverride
-            } else {
-                configuration.elementCallBaseURL
-            }
+            let baseURL = ElementCallConfiguration.resolvedBaseURL(defaultURL: configuration.elementCallBaseURL,
+                                                                   overrideURL: configuration.elementCallBaseURLOverride,
+                                                                   buildType: .current)
             
             // We only set the analytics configuration if analytics are enabled
             let analyticsConfiguration: ElementCallAnalyticsConfiguration? = if analyticsService.isEnabled {

@@ -38,7 +38,7 @@
 "screen_chiich_ai_consent_decline" = "Продолжить без ИИ";
 "screen_chiich_ai_consent_disable" = "Отключить ИИ и отозвать согласие";
 "screen_chiich_ai_consent_sync_failure" = "Не удалось передать ваш выбор на сервер. Подключитесь к сети и повторите, чтобы изменение вступило в силу для собеседников.";
-"screen_chiich_ai_consent_summary" = "Перевод сообщений, рерайт, транскрибация и поддержка AI планера требуют передачи данных внешнему обработчику ИИ";
+"screen_chiich_ai_consent_summary" = "Перевод сообщений, рерайт, транскрибация и поддержка AI планера требуют передачи данных внешнему обработчику ИИ ProxyAPI, который передаёт их поставщикам моделей, включая OpenAI.";
 "screen_chiich_ai_consent_optional" = "Без ИИ чат продолжит работать. Выбор можно изменить в настройках.";
 "screen_chiich_ai_consent_details" = "Подробнее о технологии";
 "screen_chiich_ai_consent_no" = "Без ИИ";

@@ -11,6 +11,7 @@ import Foundation
 
 enum UserSessionCallback {
     case didReceiveAuthError(isSoftLogout: Bool)
+    case didConfirmCHIICHAccountClosure
 }
 
 struct SessionSecurityState: Equatable {

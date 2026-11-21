@@ -18,6 +18,17 @@ struct ElementCallConfiguration {
     let voiceOnly: Bool
     let colorScheme: ColorScheme
     
+    /// External call pages are a debug-only tool, never a release web-browsing entry.
+    /// Ignore persisted overrides in nightly/release builds as well as newly entered ones.
+    static func resolvedBaseURL(defaultURL: URL, overrideURL: URL?, buildType: AppBuildType) -> URL {
+        switch buildType {
+        case .debug:
+            return overrideURL ?? defaultURL
+        case .nightly, .release:
+            return defaultURL
+        }
+    }
+
     /// A string representing the call being configured.
     var callRoomID: String {
         roomProxy.id

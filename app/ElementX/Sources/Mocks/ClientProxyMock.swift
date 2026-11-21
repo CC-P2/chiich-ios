@@ -33,6 +33,7 @@ struct ClientProxyMockConfiguration {
     
     var canChangeAvatar = true
     var canChangeDisplayName = true
+    var supportsCHIICHDeletion = false
     var supportsCHIICHPassword = false
     
     var maxMediaUploadSize: UInt = 100 * 1024 * 1024
@@ -92,6 +93,8 @@ extension ClientProxyMock {
         hasDevicesToVerifyAgainstReturnValue = .success(true)
         accountURLActionReturnValue = "https://matrix.org/account"
         canDeactivateAccount = false
+        supportsCHIICHDeletion = configuration.supportsCHIICHDeletion
+        makeCHIICHDeletionServiceReturnValue = nil
         supportsCHIICHPassword = configuration.supportsCHIICHPassword
         makeCHIICHPasswordServiceReturnValue = nil
         directRoomForUserIDReturnValue = .failure(.sdkError(ClientProxyMockError.generic))

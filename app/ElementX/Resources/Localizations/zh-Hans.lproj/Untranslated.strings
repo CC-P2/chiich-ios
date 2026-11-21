@@ -38,7 +38,7 @@
 "screen_chiich_ai_consent_decline" = "不启用 AI，继续聊天";
 "screen_chiich_ai_consent_disable" = "关闭 AI 并撤回授权";
 "screen_chiich_ai_consent_sync_failure" = "您的选择尚未同步到服务器。请联网后重试，以便让更改对其他参与者生效。";
-"screen_chiich_ai_consent_summary" = "消息翻译、改写、语音转写和 AI 计划助手需要将数据发送给外部 AI 处理服务。";
+"screen_chiich_ai_consent_summary" = "消息翻译、改写、语音转写和 AI 计划助手需要将数据发送给外部 AI 处理服务 ProxyAPI，再由 ProxyAPI 转交给包括 OpenAI 在内的模型提供方。";
 "screen_chiich_ai_consent_optional" = "不启用 AI 也能正常聊天。您可以随时在设置中更改选择。";
 "screen_chiich_ai_consent_details" = "技术详情";
 "screen_chiich_ai_consent_no" = "不使用 AI";

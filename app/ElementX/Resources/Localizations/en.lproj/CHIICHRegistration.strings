@@ -1,0 +1,14 @@
+"create" = "Create an account with a password";
+"submit" = "Create account";
+"invite" = "Invitation code";
+"invite_hint" = "Enter the invitation code you received from CHIICH.";
+"invite_needed" = "An invitation code is required.";
+"bad_invite" = "The invitation code was rejected. Check it or request a new one.";
+"invalid" = "Choose a username using lowercase Latin letters and digits.";
+"taken" = "That username is taken. Choose another.";
+"rate_limit" = "Too many attempts. Try again later.";
+"weak" = "Choose a stronger password.";
+"server_refused" = "The server declined registration. Check the invitation code.";
+"unsupported" = "This server requires an additional registration step that the app cannot complete.";
+"uncertain" = "Could not confirm registration. Try signing in with the username and password you chose.";
+"created" = "Account created. You can sign in with your password.";

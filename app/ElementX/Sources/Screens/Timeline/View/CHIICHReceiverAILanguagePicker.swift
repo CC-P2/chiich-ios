@@ -34,7 +34,7 @@ struct CHIICHReceiverAILanguagePicker: View {
                 }
                 .accessibilityIdentifier("chiich.receiverAI.language.\(code)")
             }
-            .searchable(text: $query)
+            .searchController(query: $query)
             .navigationTitle(L10n.screenChiichReceiverAiLanguage)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -43,6 +43,7 @@ struct CHIICHReceiverAILanguagePicker: View {
                 }
             }
         }
+        .tint(CHIICHTheme.accent)
     }
 
     private func title(_ code: String) -> String {
@@ -61,9 +62,10 @@ struct ChiichReceiverAILanguages_Previews: PreviewProvider, TestablePreview {
     static var previews: some View {
         let _ = CHIICHCompoundHook().override(colors: Color.compound, uiColors: UIColor.compound)
         CHIICHReceiverAILanguagePicker(service: service)
+            .preferredColorScheme(.light)
             .previewDisplayName("Search translation languages")
         CHIICHReceiverAILanguagePicker(service: service)
-            .environment(\.colorScheme, .dark)
+            .preferredColorScheme(.dark)
             .previewDisplayName("Graphite translation languages")
     }
 }

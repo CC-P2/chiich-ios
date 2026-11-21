@@ -347,6 +347,14 @@ class SettingsFlowCoordinator: FlowCoordinatorProtocol {
     }
     
     private func presentDeactivateAccount() {
+        if flowParameters.userSession.clientProxy.supportsCHIICHDeletion {
+            let coordinator = CHIICHDeletionScreenCoordinator(clientProxy: flowParameters.userSession.clientProxy)
+            coordinator.dismissalPublisher.sink { [weak self] in
+                self?.navigationStackCoordinator.pop()
+            }.store(in: &cancellables)
+            navigationStackCoordinator.push(coordinator)
+            return
+        }
         let parameters = DeactivateAccountScreenCoordinatorParameters(clientProxy: flowParameters.userSession.clientProxy,
                                                                       userIndicatorController: flowParameters.userIndicatorController)
         let coordinator = DeactivateAccountScreenCoordinator(parameters: parameters)

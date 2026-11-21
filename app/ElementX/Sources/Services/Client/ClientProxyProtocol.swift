@@ -14,6 +14,7 @@ import MatrixRustSDK
 enum ClientProxyAction {
     case receivedSyncUpdate
     case receivedAuthError(isSoftLogout: Bool)
+    case confirmedCHIICHAccountClosure
     case receivedDecryptionError(UnableToDecryptInfo)
     
     var isSyncUpdate: Bool {
@@ -257,6 +258,9 @@ protocol ClientProxyProtocol: AnyObject {
     func linkNewDeviceService() -> LinkNewDeviceServiceProtocol
     
     func deactivateAccount(password: String, eraseData: Bool) async -> Result<Void, ClientProxyError>
+
+    var supportsCHIICHDeletion: Bool { get }
+    func makeCHIICHDeletionService() -> CHIICHDeletionService?
 
     var supportsCHIICHPassword: Bool { get }
     func makeCHIICHPasswordService() -> CHIICHPasswordService?

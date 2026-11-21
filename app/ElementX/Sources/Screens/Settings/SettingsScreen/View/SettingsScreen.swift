@@ -116,7 +116,7 @@ struct SettingsScreen: View {
     
     private var addAccountSection: some View {
         Section {
-            ListRow(label: .default(title: L10n.screenSettingsAddAccount,
+            ListRow(label: .default(title: L10n.commonAddAccount,
                                     icon: \.plus),
                     kind: .navigationLink {
                         context.send(viewAction: .addAccount)
