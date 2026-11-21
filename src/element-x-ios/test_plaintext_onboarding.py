@@ -16,9 +16,10 @@ class PlaintextOnboardingTests(unittest.TestCase):
 
     def test_manifest_pins_overlay_after_existing_release(self):
         lock = json.loads((ROOT / 'upstream.lock.json').read_text())
-        self.assertEqual(lock['patches'][-1]['path'], 'patches/plaintext-onboarding.patch')
-        self.assertEqual(lock['patches'][-2]['path'], 'patches/first-chat-consent.patch')
-        self.assertEqual(hashlib.sha256(self.patch.encode()).hexdigest(), lock['patches'][-1]['sha256'])
+        paths = [item['path'] for item in lock['patches']]
+        position = paths.index('patches/plaintext-onboarding.patch')
+        self.assertEqual(paths[position - 1], 'patches/first-chat-consent.patch')
+        self.assertEqual(hashlib.sha256(self.patch.encode()).hexdigest(), lock['patches'][position]['sha256'])
 
     def test_only_onboarding_presentation_and_its_tests_change(self):
         paths = [line.removeprefix('+++ b/') for line in self.patch.splitlines() if line.startswith('+++ b/')]

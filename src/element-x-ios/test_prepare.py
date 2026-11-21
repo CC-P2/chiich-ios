@@ -3,6 +3,7 @@ import io
 import json
 from pathlib import Path
 import tarfile
+import subprocess
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -11,6 +12,37 @@ import prepare
 
 
 class SourcePreparationTests(unittest.TestCase):
+    def assert_nested_git_overlay_applies(self, own_checkout):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            subprocess.run(["git", "init", "--quiet", str(root)], check=True)
+            decoy = root / "original.txt"
+            decoy.write_text("parent remains untouched\n")
+            source = root / "nested"
+            source.mkdir()
+            if own_checkout:
+                subprocess.run(["git", "init", "--quiet", str(source)], check=True)
+                self.assertEqual(Path(prepare.run("git", "rev-parse", "--show-toplevel", cwd=source)).resolve(),
+                                 source.resolve())
+            original = source / "original.txt"
+            original.write_text("before\n")
+            overlay = root / "change.patch"
+            overlay.write_text("diff --git a/original.txt b/original.txt\n"
+                               "--- a/original.txt\n+++ b/original.txt\n"
+                               "@@ -1 +1 @@\n-before\n+after\n")
+            lock = {"patches": [{"path": overlay.name, "sha256": prepare.digest(overlay)}], "assets": []}
+            with patch.object(prepare, "ROOT", root):
+                prepare.apply(source, lock)
+            self.assertEqual(original.read_text(), "after\n")
+            self.assertEqual(decoy.read_text(), "parent remains untouched\n")
+            self.assertEqual(json.loads((source / "CHIICH-SOURCE.json").read_text()), lock)
+
+    def test_archive_output_inside_unrelated_checkout_applies_git_patch(self):
+        self.assert_nested_git_overlay_applies(own_checkout=False)
+
+    def test_nested_own_checkout_still_applies_git_patch(self):
+        self.assert_nested_git_overlay_applies(own_checkout=True)
+
     def test_archive_digest_checked_before_extraction(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

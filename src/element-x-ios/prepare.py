@@ -3,6 +3,7 @@
 import argparse
 import hashlib
 import json
+import os
 from pathlib import Path
 import shutil
 import subprocess
@@ -23,7 +24,12 @@ def verify_file(path, expected):
 
 
 def run(*args, cwd):
-    result = subprocess.run(args, cwd=cwd, capture_output=True, text=True)
+    # An archive output may sit inside this repository. Do not let git apply
+    # discover that unrelated parent checkout and silently skip its paths.
+    # A checkout rooted at cwd is still discovered and validated normally.
+    env = os.environ.copy()
+    env["GIT_CEILING_DIRECTORIES"] = str(Path(cwd).resolve().parent)
+    result = subprocess.run(args, cwd=cwd, env=env, capture_output=True, text=True)
     if result.returncode:
         raise RuntimeError(f"Source preparation command failed: {result.stderr.strip()}")
     return result.stdout.strip()

@@ -2,6 +2,7 @@
 from pathlib import Path
 import hashlib
 import json
+import re
 import unittest
 
 ROOT = Path(__file__).resolve().parent
@@ -38,6 +39,14 @@ class FirstChatConsentTests(unittest.TestCase):
         self.assertIn('внешнему обработчику ИИ', self.patch)
         # Actual choices still use the original consent service; this overlay never grants on appear.
         self.assertNotIn('+            service.setConsent(true)', self.patch)
+
+    def test_each_short_consent_translation_names_the_ai_processors(self):
+        summaries = re.findall(r'^\+"screen_chiich_ai_consent_summary" = "(.*)";$',
+                               self.patch, re.MULTILINE)
+        self.assertEqual(len(summaries), 3)  # Existing English, Russian and Chinese translations.
+        for summary in summaries:
+            self.assertIn('ProxyAPI', summary)
+            self.assertIn('OpenAI', summary)
 
 if __name__ == '__main__':
     unittest.main()

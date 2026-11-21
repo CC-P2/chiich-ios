@@ -82,7 +82,7 @@ jobs:
           path: .build/native-build.log
           retention-days: 7
           if-no-files-found: warn
-      - name: Run focused native authentication and receiver AI tests
+      - name: Run focused native authentication, account closure and receiver AI tests
         working-directory: .build/chiich-ios
         run: |
           mkdir -p ../TestResults
@@ -107,6 +107,10 @@ jobs:
             -only-testing:UnitTests/UserProfileScreenViewModelTests \
             -only-testing:UnitTests/CHIICHIdentityRoutingTests \
             -only-testing:UnitTests/CHIICHAppURLFallbackTests \
+            -only-testing:UnitTests/CHIICHDeletionTests \
+            -only-testing:UnitTests/UserSessionManagerTests \
+            -only-testing:UnitTests/ElementCallConfigurationTests \
+            -only-testing:UnitTests/CHIICHRegistrationTests \
             -only-testing:UnitTests/CHIICHPasswordRequestTests \
             -only-testing:UnitTests/CHIICHPasswordServiceTests \
             -only-testing:UnitTests/CHIICHPasswordLoginResolverTests \
@@ -236,7 +240,10 @@ jobs:
               -derivedDataPath ../DerivedData \
               -disableAutomaticPackageResolution -onlyUsePackageVersionsFromResolvedFile \
               -resultBundlePath "../TestResults/$chiich_ui_result.xcresult" \
-              -only-testing:UITests/ChiichHomeControlsTests \
+              -only-testing:UITests/ChiichHomeControlsTests/testSingleNativeSearchEntryAndCancellation \
+              -only-testing:UITests/ChiichHomeControlsTests/testSettingsFiltersAndSectionsShareHomeState \
+              -only-testing:UITests/ChiichHomeControlsTests/testInlineSearchFallbackHasOneEntryAndCanCancel \
+              -only-testing:UITests/ChiichHomeControlsTests/testGraphiteRootComposition \
               -parallel-testing-enabled NO \
               ARCHS=arm64 ONLY_ACTIVE_ARCH=YES \
               CODE_SIGNING_ALLOWED=NO \
@@ -289,6 +296,16 @@ jobs:
             .build/TestResults/Controls-iPad.xcresult/
             .build/TestResults/Controls-iPad-summary.json
           retention-days: 7
+          if-no-files-found: warn
+      - name: Capture additional App Store display sizes
+        run: bash src/element-x-ios/capture_store_screenshots.sh .build/chiich-ios .build/StoreScreenshots
+      - name: Preserve App Store screenshot candidates
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: CHIICH-iOS-store-screenshot-candidates
+          path: .build/StoreScreenshots/
+          retention-days: 30
           if-no-files-found: warn
       - name: Preserve simulator build
         run: |

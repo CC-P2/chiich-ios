@@ -13,7 +13,8 @@ from urllib.parse import urlparse, quote
 
 ROOT = Path(__file__).resolve().parent.parent
 DEPENDENCIES = ROOT / 'source-dependencies'
-SOURCE_COMMIT = '3dc8d5676d43c68664aa0d0ed0410e9cdd0547ab'
+VERSION = '1.0.0'
+BUILD = '13'
 
 
 def sha256(path):
@@ -65,8 +66,8 @@ def main():
         subprocess.run(['python3', str(ROOT / 'src/element-x-ios/prepare.py'),
                         '--output', str(app), '--archive', str(archive)], check=True)
         subprocess.run(['python3', str(ROOT / 'src/element-x-ios/signing.py'),
-                        'unsigned', '--source', str(app), '--version', '1.0.0',
-                        '--build', '10', '--service-mode', 'links-only'], check=True)
+                        'unsigned', '--source', str(app), '--version', VERSION,
+                        '--build', BUILD, '--service-mode', 'links-only'], check=True)
         media = json.loads((DEPENDENCIES / 'development-media.json').read_text())
         for item in media:
             relative = Path(item['path'])
@@ -92,9 +93,10 @@ def main():
     pointers = [str(path.relative_to(ROOT / 'app')) for path in files
                 if path.stat().st_size < 256 and path.read_bytes().startswith(b'version https://git-lfs.github.com/spec/v1')]
     provenance = {
-        'version': '1.0.0', 'build': '10', 'source_commit': SOURCE_COMMIT,
+        'version': VERSION, 'build': BUILD, 'source_commit': manifest['application_source']['ref'],
+        'build_workflow_run': manifest['application_source']['workflowRun'],
         'upstream_commit': lock['commit'], 'service_mode': 'links-only',
-        'xcode': '27.0 (27A266a)', 'xcodegen': '2.46.0', 'swiftgen': '6.6.3', 'sourcery': '2.4.1',
+        'toolchain': manifest['build_environment'],
         'signing': 'Version and service configuration reproduced; private signing credentials excluded.',
         'development_media_files': len(media), 'test_snapshot_lfs_pointers': len(pointers),
         'test_snapshot_paths': pointers,

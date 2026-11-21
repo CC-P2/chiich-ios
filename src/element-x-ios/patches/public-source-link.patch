@@ -1,0 +1,29 @@
+--- a/ElementX/Sources/Screens/Settings/LegalInformationScreen/View/LegalInformationScreen.swift
++++ b/ElementX/Sources/Screens/Settings/LegalInformationScreen/View/LegalInformationScreen.swift
+@@ -13,6 +13,17 @@
+     let context: LegalInformationScreenViewModel.Context
+     @Environment(\.openURL) private var openURL
+     
++    private let sourceCodeURL: URL = "https://github.com/CC-P2/chiich-ios"
++
++    private var sourceCodeTitle: String {
++        let preferred = Bundle.overrideLocalizations ?? Bundle.app.preferredLocalizations
++        switch preferred.first.flatMap({ Locale(identifier: $0).language.languageCode?.identifier }) {
++        case "ru": return "Исходный код и лицензии"
++        case "zh": return "源代码与许可证"
++        default: return "Source code and licenses"
++        }
++    }
++
+     var body: some View {
+         Form {
+             Section {
+@@ -22,6 +33,8 @@
+                         kind: .button { openURL(context.viewState.acceptableUseURL) })
+                 ListRow(label: .plain(title: L10n.commonPrivacyPolicy),
+                         kind: .button { openURL(context.viewState.privacyURL) })
++                ListRow(label: .plain(title: sourceCodeTitle),
++                        kind: .button { openURL(sourceCodeURL) })
+             }
+         }
+         .compoundList()

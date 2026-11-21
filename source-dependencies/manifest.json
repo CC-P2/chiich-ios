@@ -2,11 +2,12 @@
   "schema_version": 1,
   "application_source": {
     "repo": "CC-P2/chiich",
-    "ref": "3dc8d5676d43c68664aa0d0ed0410e9cdd0547ab",
-    "build": "1.0.0 (10)",
-    "workflowRun": 42821345748
+    "ref": "8bbf5296d157468c8136bda47b704a2d7d230342",
+    "build": "1.0.0 (13)",
+    "workflowRun": 44869223338,
+    "simulatorWorkflowRun": 44867350136
   },
-  "purpose": "Pinned dependency source archives for CHIICH iOS 1.0.0 build 10",
+  "purpose": "Pinned dependency source archives for CHIICH iOS 1.0.0 build 13",
   "archive_type": "GitHub source archive at an exact Git commit; build scripts, lockfiles and license notices retained",
   "limitations": [
     "Archives may contain Git LFS pointers, listed per archive. Registry packages referenced by Cargo/npm lockfiles are not vendored.",
@@ -1950,16 +1951,6 @@
       "status": "verified-archive"
     }
   ],
-  "build10_environment": {
-    "xcode": "27.0",
-    "xcode_build": "27A266a",
-    "xcodegen": "2.46.0",
-    "swiftgen": "6.6.3",
-    "sourcery": "2.4.1",
-    "git-lfs": "3.8.1",
-    "native_service_mode": "links-only",
-    "source": "GitHub Actions run 42821345748, signed-archive job 129847469822"
-  },
   "additional_external_source_links": [
     {
       "wrapper_repository": "https://github.com/maplibre/maplibre-gl-native-distribution",
@@ -2004,5 +1995,15 @@
   ],
   "unresolved_native_binary_provenance": [
     "RTC media depends on registry crates livekit 0.7.48, libwebrtc 0.3.38 and webrtc-sys 0.3.35. The exact underlying Chromium/WebRTC native source SHA was not established in this audit. Cargo.lock retains crate versions/checksums."
-  ]
+  ],
+  "build_environment": {
+    "xcode": "27.0",
+    "xcode_build": "27A266a",
+    "xcodegen": "2.46.0",
+    "swiftgen": "6.6.3",
+    "sourcery": "2.4.1",
+    "git-lfs": "3.8.1",
+    "native_service_mode": "links-only",
+    "source": "GitHub Actions simulator workflow 44867350136 and distribution workflow 44869223338"
+  }
 }

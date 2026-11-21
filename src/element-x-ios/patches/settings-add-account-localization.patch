@@ -1,0 +1,12 @@
+diff --git a/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift b/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift
+--- a/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift
++++ b/ElementX/Sources/Screens/Settings/SettingsScreen/View/SettingsScreen.swift
+@@ -92,7 +92,7 @@
+     
+     private var addAccountSection: some View {
+         Section {
+-            ListRow(label: .default(title: L10n.screenSettingsAddAccount,
++            ListRow(label: .default(title: L10n.commonAddAccount,
+                                     icon: \.plus),
+                     kind: .navigationLink {
+                         context.send(viewAction: .addAccount)

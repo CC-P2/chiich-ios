@@ -350,7 +350,7 @@ diff --git a/ElementX/Resources/Localizations/en.lproj/Untranslated.strings b/El
  "screen_chiich_ai_consent_decline" = "Continue without AI";
  "screen_chiich_ai_consent_disable" = "Turn off AI and withdraw permission";
  "screen_chiich_ai_consent_sync_failure" = "Your choice hasn’t synced with the server. Retry when you’re online to apply it for other participants.";
-+"screen_chiich_ai_consent_summary" = "Message translation, rewriting, transcription and AI planner support require sending data to an external AI processor.";
++"screen_chiich_ai_consent_summary" = "Message translation, rewriting, transcription and AI planner support require sending data to an external AI processor, ProxyAPI, which forwards it to model providers including OpenAI.";
 +"screen_chiich_ai_consent_optional" = "You can chat without AI. Change your choice in Settings at any time.";
 +"screen_chiich_ai_consent_details" = "About the technology";
 +"screen_chiich_ai_consent_no" = "Without AI";
@@ -362,7 +362,7 @@ diff --git a/ElementX/Resources/Localizations/ru.lproj/Untranslated.strings b/El
  "screen_chiich_ai_consent_decline" = "Продолжить без ИИ";
  "screen_chiich_ai_consent_disable" = "Отключить ИИ и отозвать согласие";
  "screen_chiich_ai_consent_sync_failure" = "Не удалось передать ваш выбор на сервер. Подключитесь к сети и повторите, чтобы изменение вступило в силу для собеседников.";
-+"screen_chiich_ai_consent_summary" = "Перевод сообщений, рерайт, транскрибация и поддержка AI планера требуют передачи данных внешнему обработчику ИИ";
++"screen_chiich_ai_consent_summary" = "Перевод сообщений, рерайт, транскрибация и поддержка AI планера требуют передачи данных внешнему обработчику ИИ ProxyAPI, который передаёт их поставщикам моделей, включая OpenAI.";
 +"screen_chiich_ai_consent_optional" = "Без ИИ чат продолжит работать. Выбор можно изменить в настройках.";
 +"screen_chiich_ai_consent_details" = "Подробнее о технологии";
 +"screen_chiich_ai_consent_no" = "Без ИИ";
@@ -374,7 +374,7 @@ diff --git a/ElementX/Resources/Localizations/zh-Hans.lproj/Untranslated.strings
  "screen_chiich_ai_consent_decline" = "不启用 AI，继续聊天";
  "screen_chiich_ai_consent_disable" = "关闭 AI 并撤回授权";
  "screen_chiich_ai_consent_sync_failure" = "您的选择尚未同步到服务器。请联网后重试，以便让更改对其他参与者生效。";
-+"screen_chiich_ai_consent_summary" = "消息翻译、改写、语音转写和 AI 计划助手需要将数据发送给外部 AI 处理服务。";
++"screen_chiich_ai_consent_summary" = "消息翻译、改写、语音转写和 AI 计划助手需要将数据发送给外部 AI 处理服务 ProxyAPI，再由 ProxyAPI 转交给包括 OpenAI 在内的模型提供方。";
 +"screen_chiich_ai_consent_optional" = "不启用 AI 也能正常聊天。您可以随时在设置中更改选择。";
 +"screen_chiich_ai_consent_details" = "技术详情";
 +"screen_chiich_ai_consent_no" = "不使用 AI";

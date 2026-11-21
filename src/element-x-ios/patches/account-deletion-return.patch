@@ -1,0 +1,356 @@
+diff --git a/ElementX/Resources/Localizations/en.lproj/CHIICHDeletion.strings b/ElementX/Resources/Localizations/en.lproj/CHIICHDeletion.strings
+index d6ce9a3..b9f8d4b 100644
+--- a/ElementX/Resources/Localizations/en.lproj/CHIICHDeletion.strings
++++ b/ElementX/Resources/Localizations/en.lproj/CHIICHDeletion.strings
+@@ -9,7 +9,8 @@
+ "apple_help" = "Apple: stop using Sign in with Apple";
+ "unknown_outcome" = "The server result is unknown. The account may already have been closed. This request will not be retried automatically. Close this screen and check your account before making another request.";
+ "session_changed" = "The original session is no longer available. This does not confirm whether the account was deleted. Close this screen and check your account.";
+-"sso_hint" = "Confirm account deletion with your sign-in provider, then close the browser and tap Check confirmation. Closing the browser alone does not delete the account.";
++"finish_sso" = "Finish deleting account";
++"sso_hint" = "Confirm your identity in the browser, then tap “Finish deleting account”. If Chats opens, return to Settings → Delete account to finish.";
+ "unavailable" = "Account deletion is not available for this account in this app.";
+ "expired" = "This confirmation is no longer valid. Close this screen before starting a new deletion request.";
+ "rate_limit" = "Too many attempts. Wait before starting a new deletion request.";
+diff --git a/ElementX/Resources/Localizations/ru.lproj/CHIICHDeletion.strings b/ElementX/Resources/Localizations/ru.lproj/CHIICHDeletion.strings
+index 4d7aee9..d8ba8ca 100644
+--- a/ElementX/Resources/Localizations/ru.lproj/CHIICHDeletion.strings
++++ b/ElementX/Resources/Localizations/ru.lproj/CHIICHDeletion.strings
+@@ -9,7 +9,8 @@
+ "apple_help" = "Apple: отключить Вход с Apple";
+ "unknown_outcome" = "Ответ сервера неизвестен. Возможно, аккаунт уже закрыт. Автоматического повтора не будет. Закройте экран и проверьте аккаунт перед новым запросом.";
+ "session_changed" = "Исходная сессия больше недоступна. Это не подтверждает удаление аккаунта. Закройте экран и проверьте аккаунт.";
+-"sso_hint" = "Подтвердите удаление аккаунта у вашего провайдера входа, затем закройте браузер и нажмите «Проверить подтверждение». Само закрытие браузера не удаляет аккаунт.";
++"finish_sso" = "Завершить удаление";
++"sso_hint" = "Подтвердите вход в браузере и нажмите «Завершить удаление». Если открылись чаты, вернитесь в Настройки → Удалить аккаунт.";
+ "unavailable" = "Удаление этого аккаунта сейчас недоступно в приложении.";
+ "expired" = "Это подтверждение больше недействительно. Закройте экран перед новым запросом удаления.";
+ "rate_limit" = "Слишком много попыток. Подождите перед новым запросом удаления.";
+diff --git a/ElementX/Resources/Localizations/zh-Hans.lproj/CHIICHDeletion.strings b/ElementX/Resources/Localizations/zh-Hans.lproj/CHIICHDeletion.strings
+index 2c7f869..863697b 100644
+--- a/ElementX/Resources/Localizations/zh-Hans.lproj/CHIICHDeletion.strings
++++ b/ElementX/Resources/Localizations/zh-Hans.lproj/CHIICHDeletion.strings
+@@ -9,7 +9,8 @@
+ "apple_help" = "Apple：停止使用通过 Apple 登录";
+ "unknown_outcome" = "服务器结果未知。账户可能已关闭。此请求不会自动重试。请关闭此页面并检查账户，然后再发起请求。";
+ "session_changed" = "原来的会话已不可用。这并不确认账户是否已删除。请关闭此页面并检查账户。";
+-"sso_hint" = "请通过登录提供商确认删除账户，然后关闭浏览器并点击“检查确认”。仅关闭浏览器不会删除账户。";
++"finish_sso" = "完成账号删除";
++"sso_hint" = "请在浏览器中验证身份，然后轻点“完成账号删除”。如果返回聊天列表，请重新打开“设置”中的“删除账号”。";
+ "unavailable" = "此应用暂时无法删除此账户。";
+ "expired" = "此确认已失效。请先关闭此页面，然后再发起删除请求。";
+ "rate_limit" = "尝试次数过多。请稍候再发起删除请求。";
+diff --git a/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/CHIICHDeletionScreenViewModel.swift b/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/CHIICHDeletionScreenViewModel.swift
+index 8d99125..29fd053 100644
+--- a/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/CHIICHDeletionScreenViewModel.swift
++++ b/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/CHIICHDeletionScreenViewModel.swift
+@@ -21,19 +21,25 @@ final class CHIICHDeletionScreenViewModel: CHIICHDeletionScreenViewModelType {
+     }
+ 
+     func start() {
+-        guard service != nil else {
++        guard let service else {
+             state.mode = .unavailable
+             state.error = .unsupportedServer
+             return
+         }
++        if let pending = service.pendingSSO, service.browserReturned(nonce: pending.nonce) {
++            state.mode = .authentication
++            state.challenge = pending.challenge
++            state.returnedBrowserNonce = pending.nonce
++        }
+     }
+ 
+     func stop() {
++        guard !isClosed else { return }
+         isClosed = true
+         operationID = UUID()
+         // Do not cancel a submitted HTTP request when sync removes the initiating session.
+         operationTask = nil
+-        service?.close()
++        if state.isWorking { service?.close() } else { service?.leaveScreen() }
+         state.isWorking = false
+         clearFields()
+         state.bindings.browser = nil
+@@ -44,8 +50,10 @@ final class CHIICHDeletionScreenViewModel: CHIICHDeletionScreenViewModelType {
+ 
+     override func process(viewAction: CHIICHDeletionScreenViewAction) {
+         // Actions and state must not be logged: the screen holds credentials while editing.
++        guard !isClosed else { return }
+         switch viewAction {
+         case .close:
++            service?.close()
+             stop()
+             dismissalSubject.send(())
+         case .requestDeletion:
+@@ -64,6 +72,8 @@ final class CHIICHDeletionScreenViewModel: CHIICHDeletionScreenViewModelType {
+         case .browserSheetDismissed:
+             if let nonce = presentedBrowser?.id { browserReturned(nonce) }
+         case .confirmSSO:
++            // This is an explicit tap, including when Safari hasn't dismissed itself.
++            if let nonce = presentedBrowser?.id { browserReturned(nonce) }
+             guard let service, let nonce = state.returnedBrowserNonce else { return }
+             perform(kind: .sso) { await service.confirmSSO(nonce: nonce) }
+         case .finishCompletedChallenge:
+@@ -135,6 +145,7 @@ final class CHIICHDeletionScreenViewModel: CHIICHDeletionScreenViewModelType {
+             case .success(.challenge(let challenge)):
+                 state.challenge = challenge
+                 state.mode = .authentication
++                state.returnedBrowserNonce = service?.pendingSSO?.nonce
+                 if challenge.errcode != nil {
+                     state.error = .authenticationRejected
+                 } else if kind == .sso {
+diff --git a/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/View/CHIICHDeletionScreen.swift b/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/View/CHIICHDeletionScreen.swift
+index 03b08cf..c58958d 100644
+--- a/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/View/CHIICHDeletionScreen.swift
++++ b/ElementX/Sources/Screens/Settings/CHIICHDeletionScreen/View/CHIICHDeletionScreen.swift
+@@ -50,19 +50,31 @@ struct CHIICHDeletionScreen: View {
+             Button(L10n.actionCancel, role: .cancel) { }
+         } message: { Text(CHIICHDeletionStrings.text("warning")) }
+         .sheet(item: $context.browser, onDismiss: { context.send(viewAction: .browserSheetDismissed) }) { presentation in
+-            CHIICHPasswordSSOBrowser(presentation: presentation) { nonce in
+-                context.send(viewAction: .browserReturned(nonce))
++            VStack(spacing: 0) {
++                CHIICHPasswordSSOBrowser(presentation: presentation) { nonce in
++                    context.send(viewAction: .browserReturned(nonce))
++                }
++                Divider()
++                finishSSOButton
++                    .buttonStyle(.borderedProminent)
++                    .padding()
+             }
+-            .ignoresSafeArea()
+         }
+         .privacySensitive()
+         .accessibilityIdentifier("chiich.deletion.screen")
+     }
+ 
++    private var finishSSOButton: some View {
++        Button(CHIICHDeletionStrings.text("finish_sso"), role: .destructive) {
++            context.send(viewAction: .confirmSSO)
++        }
++        .disabled(context.viewState.isWorking)
++        .accessibilityIdentifier("chiich.deletion.verifySSO")
++    }
++
+     private var deletionEntry: some View {
+         Section {
+             Text(CHIICHDeletionStrings.text("warning"))
+-            Text(CHIICHDeletionStrings.text("apple_notice"))
+             Button(CHIICHDeletionStrings.text("delete"), role: .destructive) { context.send(viewAction: .requestDeletion) }
+                 .accessibilityIdentifier("chiich.deletion.begin")
+         }
+@@ -74,12 +86,11 @@ struct CHIICHDeletionScreen: View {
+         if let challenge = context.viewState.challenge {
+             if challenge.availableStages.contains(.sso) {
+                 Section {
+-                    Button(CHIICHPasswordStrings.text("open_sso")) { context.send(viewAction: .openSSO) }
+-                        .accessibilityIdentifier("chiich.deletion.sso")
+                     if context.viewState.returnedBrowserNonce != nil {
+-                        Button(CHIICHPasswordStrings.text("verify_sso")) { context.send(viewAction: .confirmSSO) }
+-                            .accessibilityIdentifier("chiich.deletion.verifySSO")
++                        finishSSOButton
+                     }
++                    Button(CHIICHPasswordStrings.text("open_sso")) { context.send(viewAction: .openSSO) }
++                        .accessibilityIdentifier("chiich.deletion.sso")
+                 } footer: {
+                     Text(CHIICHDeletionStrings.text("sso_hint"))
+                         .compoundListSectionFooter()
+diff --git a/ElementX/Sources/Services/CHIICHDeletion/CHIICHDeletionService.swift b/ElementX/Sources/Services/CHIICHDeletion/CHIICHDeletionService.swift
+index d5e6cf5..a4029f4 100644
+--- a/ElementX/Sources/Services/CHIICHDeletion/CHIICHDeletionService.swift
++++ b/ElementX/Sources/Services/CHIICHDeletion/CHIICHDeletionService.swift
+@@ -2,10 +2,40 @@
+ 
+ import Foundation
+ 
++/// A short-lived handoff within one SDK client, only when navigation removes the screen during SSO.
++final class CHIICHDeletionRecovery {
++    private var service: CHIICHDeletionService?
++    private var deadline = ContinuousClock.now
++    private var expiry: Task<Void, Never>?
++
++    func save(_ pending: CHIICHDeletionService) {
++        expiry?.cancel()
++        service = pending
++        deadline = ContinuousClock.now + .seconds(300)
++        let deadline = self.deadline
++        expiry = Task { [weak self] in
++            do { try await ContinuousClock().sleep(until: deadline) } catch { return }
++            guard let self, self.deadline == deadline else { return }
++            self.service = nil
++        }
++    }
++
++    func take() -> CHIICHDeletionService? {
++        defer {
++            expiry?.cancel()
++            expiry = nil
++            service = nil
++        }
++        guard ContinuousClock.now < deadline, service?.pendingSSO != nil else { return nil }
++        return service
++    }
++}
++
+ /// Reuses standard UIA models. An attempt is single-use after any uncertain outcome.
+ final class CHIICHDeletionService {
+     typealias Submission = Result<CHIICHPasswordResponse, CHIICHPasswordError>
+     let context: CHIICHPasswordContext
++    private weak var recovery: CHIICHDeletionRecovery?
+     private let sessionIsCurrent: () -> Bool
+     private let submitRequest: (CHIICHDeletionRequest) async -> Submission
+     private let confirmedSuccess: () -> Void
+@@ -17,10 +47,12 @@ final class CHIICHDeletionService {
+     private var closed = false
+ 
+     init(context: CHIICHPasswordContext,
++         recovery: CHIICHDeletionRecovery? = nil,
+          sessionIsCurrent: @escaping () -> Bool,
+          submitRequest: @escaping (CHIICHDeletionRequest) async -> Submission,
+          confirmedSuccess: @escaping () -> Void = {}) {
+         self.context = context
++        self.recovery = recovery
+         self.sessionIsCurrent = sessionIsCurrent
+         self.submitRequest = submitRequest
+         self.confirmedSuccess = confirmedSuccess
+@@ -51,6 +83,17 @@ final class CHIICHDeletionService {
+         return .success(.init(id: nonce, url: url))
+     }
+ 
++    var pendingSSO: (challenge: CHIICHPasswordChallenge, nonce: UUID)? {
++        guard !closed, !submitting, sessionIsCurrent(), let challenge, let browserNonce,
++              challenge.availableStages.contains(.sso) else { return nil }
++        return (challenge, browserNonce)
++    }
++
++    func leaveScreen() {
++        guard let recovery, pendingSSO != nil else { close(); return }
++        recovery.save(self)
++    }
++
+     /// Browser dismissal never authenticates or sends the destructive request.
+     func browserReturned(nonce: UUID) -> Bool {
+         guard !closed, !submitting, sessionIsCurrent(), browserNonce == nonce else { return false }
+@@ -102,8 +145,13 @@ final class CHIICHDeletionService {
+                 close(); return .failure(.expiredChallenge)
+             }
+             challenge = updated
+-            browserNonce = nil
+-            returnedBrowserNonce = nil
++            if case .session? = authentication, updated.availableStages.contains(.sso) {
++                // The provider may still be finishing. Recheck the same session on an explicit tap.
++                returnedBrowserNonce = browserNonce
++            } else {
++                browserNonce = nil
++                returnedBrowserNonce = nil
++            }
+         case .failure(let error):
+             close()
+             return .failure(error == .cancelled ? .outcomeUnknown : error)
+diff --git a/ElementX/Sources/Services/Client/ClientProxy.swift b/ElementX/Sources/Services/Client/ClientProxy.swift
+index 6d178f4..fd602d3 100644
+--- a/ElementX/Sources/Services/Client/ClientProxy.swift
++++ b/ElementX/Sources/Services/Client/ClientProxy.swift
+@@ -18,6 +18,7 @@ class ClientProxy: ClientProxyProtocol {
+     private let client: ClientProtocol
+     private let networkMonitor: NetworkMonitorProtocol
+     private let userSettings: UserSettings
++    private let deletionRecovery = CHIICHDeletionRecovery()
+     private let analyticsService: AnalyticsServiceProtocol
+     
+     let mediaLoader: MediaLoaderProtocol
+@@ -465,9 +466,11 @@ class ClientProxy: ClientProxyProtocol {
+     var supportsCHIICHDeletion: Bool { chiichPasswordIdentity() != nil }
+ 
+     func makeCHIICHDeletionService() -> CHIICHDeletionService? {
++        if let pending = deletionRecovery.take() { return pending }
+         guard let (initiatingSession, context) = chiichPasswordIdentity() else { return nil }
+         let initiatingHomeserver = homeserver
+         return CHIICHDeletionService(context: context,
++                                    recovery: deletionRecovery,
+                                     sessionIsCurrent: { [weak self] in
+                                         self?.chiichPasswordSessionMatches(initiatingSession, homeserver: initiatingHomeserver) == true
+                                     },
+diff --git a/UnitTests/Sources/CHIICHDeletionTests.swift b/UnitTests/Sources/CHIICHDeletionTests.swift
+index 4347265..66b8357 100644
+--- a/UnitTests/Sources/CHIICHDeletionTests.swift
++++ b/UnitTests/Sources/CHIICHDeletionTests.swift
+@@ -80,6 +80,66 @@ final class CHIICHDeletionTests {
+         #expect(fixture.confirmations == 1)
+     }
+ 
++    @Test
++    func explicitFinishInBrowserChecksTheSameSessionEvenIfAppleIsStillLoading() async throws {
++        let challenge = Self.challenge(["m.login.sso"])
++        let fixture = Fixture([.success(.challenge(challenge)), .success(.challenge(challenge)), .success(.success)])
++        let screen = try CHIICHDeletionScreenViewModel(service: fixture.service())
++        screen.start()
++        screen.process(viewAction: .confirmDeletion)
++        try await Self.waitUntil { screen.state.mode == .authentication }
++        screen.process(viewAction: .openSSO)
++        let nonce = try #require(screen.state.bindings.browser?.id)
++        #expect(fixture.requests.count == 1)
++        screen.process(viewAction: .confirmSSO) // No Safari delegate/dismissal callback.
++        screen.process(viewAction: .browserSheetDismissed)
++        try await Self.waitUntil { !screen.state.isWorking }
++        #expect(screen.state.returnedBrowserNonce == nonce)
++        #expect(fixture.confirmations == 0)
++        screen.process(viewAction: .confirmSSO)
++        try await Self.waitUntil { screen.state.mode == .success }
++        #expect(fixture.requests.dropFirst().map { $0.authentication?.sessionID } == [challenge.session, challenge.session])
++        #expect(fixture.confirmations == 1)
++    }
++
++    @Test
++    func reopeningSettingsResumesSameSSOWithoutAnotherLoginOrAutomaticDeletion() async throws {
++        let fixture = Fixture([.success(.challenge(Self.challenge(["m.login.sso"]))), .success(.success)])
++        let recovery = CHIICHDeletionRecovery()
++        let screen = try CHIICHDeletionScreenViewModel(service: fixture.service(recovery: recovery))
++        screen.start()
++        screen.process(viewAction: .confirmDeletion)
++        try await Self.waitUntil { screen.state.mode == .authentication }
++        screen.process(viewAction: .openSSO)
++        let nonce = try #require(screen.state.bindings.browser?.id)
++        screen.stop() // Navigation has returned to Chats before Safari reported dismissal.
++        let resumed = CHIICHDeletionScreenViewModel(service: try #require(recovery.take()))
++        resumed.start()
++        #expect(resumed.state.mode == .authentication)
++        #expect(resumed.state.returnedBrowserNonce == nonce)
++        #expect(fixture.requests.count == 1)
++        resumed.process(viewAction: .confirmSSO)
++        try await Self.waitUntil { resumed.state.mode == .success }
++        #expect(fixture.requests.count == 2)
++        #expect(fixture.confirmations == 1)
++    }
++
++    @Test
++    func cancellingOrChangingSessionDiscardsSuspendedDeletion() async throws {
++        for cancel in [true, false] {
++            let fixture = Fixture([.success(.challenge(Self.challenge(["m.login.sso"])))])
++            let recovery = CHIICHDeletionRecovery()
++            let screen = try CHIICHDeletionScreenViewModel(service: fixture.service(recovery: recovery))
++            screen.start()
++            screen.process(viewAction: .confirmDeletion)
++            try await Self.waitUntil { screen.state.mode == .authentication }
++            screen.process(viewAction: .openSSO)
++            if cancel { screen.process(viewAction: .close) } else { screen.stop(); fixture.current = false }
++            #expect(recovery.take() == nil)
++            #expect(fixture.requests.count == 1)
++        }
++    }
++
+     @Test
+     func passwordAndSSOSequentialStagesRemainBoundToOriginalSession() async throws {
+         let first = Self.challenge(["m.login.password", "m.login.sso"])
+@@ -192,8 +252,9 @@ final class CHIICHDeletionTests {
+         var responses: [CHIICHDeletionService.Submission]
+         var confirmations = 0
+         init(_ responses: [CHIICHDeletionService.Submission]) { self.responses = responses }
+-        func service() throws -> CHIICHDeletionService {
++        func service(recovery: CHIICHDeletionRecovery? = nil) throws -> CHIICHDeletionService {
+             CHIICHDeletionService(context: try CHIICHDeletionTests.context(),
++                                  recovery: recovery,
+                                   sessionIsCurrent: { [weak self] in self?.current == true },
+                                   submitRequest: { [weak self] request in
+                                       guard let self else { return .failure(.sessionChanged) }

@@ -1,6 +1,8 @@
 # CHIICH iOS
 
-Open source for CHIICH iOS **1.0.0, build 10**, based on Element X iOS.
+Open source for CHIICH iOS **1.0.0, build 13**, based on Element X iOS.
+
+The [build 10 source snapshot](https://github.com/CC-P2/chiich-ios/tree/3c6b6433429d7f408f8f63abd7663812032bf377) remains available.
 
 ## Source
 
@@ -8,13 +10,13 @@ Open source for CHIICH iOS **1.0.0, build 10**, based on Element X iOS.
 - `src/element-x-ios/`: original CHIICH patches, integrity manifest, preparation/signing-support scripts and tests.
 - `source-dependencies/`: pinned source archives, checksums and dependency inventory. Its manifest identifies components provided by exact upstream links, registry dependencies and the auxiliary development-tool license exception.
 - `SOURCE-PROVENANCE.json` and `SHA256SUMS`: revision, build configuration and application file hashes.
-- `build-reference/`: inactive text copies of build 10 workflows, containing secret variable names but no credentials.
+- `build-reference/`: inactive text copies of build 13 workflows, containing secret variable names but no credentials.
 
-Original native revision: `3dc8d5676d43c68664aa0d0ed0410e9cdd0547ab`. Element X: `27cdd980dcce083b939935521fdcc9a754e18244` (`release/26.10.8`). Source publication does not change the installed application.
+Original native revision: `8bbf5296d157468c8136bda47b704a2d7d230342`. Element X: `27cdd980dcce083b939935521fdcc9a754e18244` (`release/26.10.8`). Source publication does not change the installed application.
 
 ## Build
 
-Use macOS and Xcode **27.0 (27A266a)**. Build 10 used XcodeGen **2.46.0**, SwiftGen **6.6.3**, and Sourcery **2.4.1**. Install these tools and Git LFS, then:
+Use macOS and Xcode **27.0 (27A266a)**. See `source-dependencies/manifest.json` for the toolchain used to verify this version. Install XcodeGen, SwiftGen, Sourcery and Git LFS, then run the following commands.
 
 ```sh
 git clone https://github.com/CC-P2/chiich-ios.git
@@ -35,7 +37,7 @@ Swift Package Manager obtains exact versions from the lockfiles. Building native
 
 Run `python3 scripts/materialize_source.py` to reproduce source from original patches and pinned archives. This verifies checksums, recreates `app/` and downloads dependency sources. It does not build, sign or upload an app. Local edits in generated `app/` are replaced.
 
-Configuration is `links-only`: Universal Links are configured; production push is not enabled. Test screenshot baselines remain upstream Git LFS pointers; build-required development media is included as verified actual bytes. The proprietary Enterprise submodule is not used or included. This publication does not claim a new Xcode compilation.
+Configuration is `links-only`: Universal Links are configured; production push is not enabled. Test screenshot baselines remain upstream Git LFS pointers; build-required development media is included as verified actual bytes. The proprietary Enterprise submodule is not used or included.
 
 ## License
 

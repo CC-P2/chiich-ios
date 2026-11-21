@@ -3,7 +3,7 @@ name: Publish verified CHIICH source
 on:
   workflow_dispatch:
   push:
-    branches: [main]
+    branches: [main, source-release/build-13]
     paths:
       - .github/workflows/publish-source.yml
       - scripts/materialize_source.py
@@ -18,7 +18,7 @@ concurrency:
 
 jobs:
   source:
-    if: github.repository == 'CC-P2/chiich-ios'
+    if: github.repository == 'CC-P2/chiich-ios' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/source-release/build-13')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
@@ -33,6 +33,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add app source-dependencies SOURCE-PROVENANCE.json SHA256SUMS
           if git diff --cached --quiet; then exit 0; fi
-          git commit -m 'Publish verified source for CHIICH iOS 1.0.0 build 10'
-          git push origin HEAD:main
+          git commit -m 'Publish verified source for CHIICH iOS 1.0.0 build 13'
+          git push origin "HEAD:refs/heads/${GITHUB_REF_NAME}"
 

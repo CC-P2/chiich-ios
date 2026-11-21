@@ -1,0 +1,249 @@
+diff --git a/ElementX/Sources/UITests/UITestsAppCoordinator.swift b/ElementX/Sources/UITests/UITestsAppCoordinator.swift
+--- a/ElementX/Sources/UITests/UITestsAppCoordinator.swift
++++ b/ElementX/Sources/UITests/UITestsAppCoordinator.swift
+@@ -614,14 +614,16 @@
+                                                                             userSession: UserSessionMock(.init()))
+             return SessionVerificationScreenCoordinator(parameters: parameters)
+         case .userSessionScreen, .userSessionScreenReply, .userSessionSpacesFlow, .chiichHomeControls, .chiichHomeControlsGraphite, .chiichHomeControlsInlineSearch:
+-            let userID = "@mock:client.com"
++            let isCHIICHHomeControls = id == .chiichHomeControls || id == .chiichHomeControlsGraphite || id == .chiichHomeControlsInlineSearch
++            // Only explicit UI-test capture launches use curated content; regression launches keep their fixtures.
++            let isCHIICHStoreCapture = isCHIICHHomeControls && ProcessInfo.processInfo.environment["CHIICH_STORE_CAPTURE"] == "1"
++            let userID = isCHIICHStoreCapture ? CHIICHStoreScreenshotFixture.userID : "@mock:client.com"
+             let userSettings = appSettings.userSettings(for: userID)
+             userSettings.account.hasRunIdentityConfirmationOnboarding = true
+             userSettings.app.hasRunNotificationPermissionsOnboarding = true
+             userSettings.app.analyticsConsentState = .optedOut
+             
+-            let isCHIICHHomeControls = id == .chiichHomeControls || id == .chiichHomeControlsGraphite || id == .chiichHomeControlsInlineSearch
+-            let hasSpaces = id == .userSessionSpacesFlow || isCHIICHHomeControls
++            let hasSpaces = !isCHIICHStoreCapture && (id == .userSessionSpacesFlow || isCHIICHHomeControls)
+             if isCHIICHHomeControls {
+                 userSettings.app.globalSearchEnabled = id != .chiichHomeControlsInlineSearch
+                 userSettings.app.mentionsFilterEnabled = true
+@@ -629,19 +631,29 @@
+                 userSettings.app.appAppearance = id == .chiichHomeControlsGraphite ? .dark : .light
+             }
+             
+-            let roomSummaries: [RoomSummary] = if hasSpaces {
++            let roomSummaries: [RoomSummary] = if isCHIICHStoreCapture {
++                CHIICHStoreScreenshotFixture.rooms
++            } else if hasSpaces {
+                 [[RoomSummary].mockSpaceInvites[0]] + .mockRooms
+             } else {
+                 .mockRooms
+             }
+             
+-            let clientProxy = ClientProxyMock(.init(userID: userID,
+-                                                    deviceID: "MOCKCLIENT",
+-                                                    roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(roomSummaries))),
+-                                                    spaceServiceConfiguration: .init(topLevelSpaces: .mockSpaceList.filter(\.isSpace) + .mockSingleRoom),
+-                                                    roomPreviews: [SpaceServiceRoom].mockSpaceList.map { RoomPreviewProxyMock(spaceServiceRoom: $0) },
+-                                                    defaultRoomMembers: .allMembersAsAdmin))
+-            clientProxy.recentlyVisitedRoomsFilterReturnValue = .mockRooms
++            var clientConfiguration = ClientProxyMockConfiguration(userID: userID,
++                                                                    deviceID: "MOCKCLIENT",
++                                                                    roomSummaryProvider: RoomSummaryProviderMock(.init(state: .loaded(roomSummaries))),
++                                                                    spaceServiceConfiguration: .init(topLevelSpaces: .mockSpaceList.filter(\.isSpace) + .mockSingleRoom),
++                                                                    roomPreviews: [SpaceServiceRoom].mockSpaceList.map { RoomPreviewProxyMock(spaceServiceRoom: $0) },
++                                                                    defaultRoomMembers: .allMembersAsAdmin)
++            if isCHIICHStoreCapture {
++                clientConfiguration.displayName = CHIICHStoreScreenshotFixture.displayName
++                clientConfiguration.status = CHIICHStoreScreenshotFixture.status
++                clientConfiguration.spaceServiceConfiguration = .init()
++                clientConfiguration.roomPreviews = []
++                clientConfiguration.defaultRoomMembers = []
++            }
++            let clientProxy = ClientProxyMock(clientConfiguration)
++            clientProxy.recentlyVisitedRoomsFilterReturnValue = isCHIICHStoreCapture ? CHIICHStoreScreenshotFixture.recentlyVisitedRooms(from: roomSummaries) : .mockRooms
+             
+             if isCHIICHHomeControls {
+                 // Keep the native search coordinator and query filtering; only its SDK data is mocked.
+diff --git a/UITests/Sources/Application.swift b/UITests/Sources/Application.swift
+--- a/UITests/Sources/Application.swift
++++ b/UITests/Sources/Application.swift
+@@ -10,12 +10,12 @@
+ import XCTest
+ 
+ enum Application {
+-    static func launch(_ identifier: UITestsScreenIdentifier, disableTimelineAccessibility: Bool = true) -> XCUIApplication {
++    static func launch(_ identifier: UITestsScreenIdentifier, disableTimelineAccessibility: Bool = true, storeCapture: Bool = false) -> XCUIApplication {
+         if ProcessInfo().environment["RECORD_FAILURES"].map(Bool.init) == true {
+             XCUIApplication.recordMode = .failed
+         }
+         
+-        checkEnvironments()
++        checkEnvironments(storeCapture: storeCapture)
+         
+         let app = XCUIApplication()
+         
+@@ -26,13 +26,17 @@
+         if disableTimelineAccessibility {
+             launchEnvironment["UI_TESTS_DISABLE_TIMELINE_ACCESSIBILITY"] = "1"
+         }
++        // Only the existing UI-test coordinator reads this explicit capture flag.
++        if storeCapture {
++            launchEnvironment["CHIICH_STORE_CAPTURE"] = "1"
++        }
+         
+         app.launchEnvironment = launchEnvironment
+         app.launch()
+         return app
+     }
+     
+-    private static func checkEnvironments() {
++    private static func checkEnvironments(storeCapture: Bool) {
+         let requirediPhoneSimulator = "iPhone18,3" // iPhone 17
+         let requirediPadSimulator = "iPad15,7" // iPad (A16)
+         let requiredOSVersion = (major: 27, minor: 0)
+@@ -45,7 +49,10 @@
+         guard let deviceModel = ProcessInfo().environment["SIMULATOR_MODEL_IDENTIFIER"] else {
+             fatalError("Unknown simulator.")
+         }
+-        guard deviceModel == requirediPhoneSimulator || deviceModel == requirediPadSimulator else {
++        // Dedicated Store captures select exact devices and verify output dimensions in
++        // capture_store_screenshots.sh. Keep regression snapshot devices unchanged.
++        let isStoreCaptureDevice = storeCapture && [.phone, .pad].contains(UIDevice.current.userInterfaceIdiom)
++        guard deviceModel == requirediPhoneSimulator || deviceModel == requirediPadSimulator || isStoreCaptureDevice else {
+             fatalError("Running on \(deviceModel) but we only support \(requirediPhoneSimulator) and \(requirediPadSimulator).")
+         }
+     }
+diff --git a/UITests/Sources/ChiichHomeControlsTests.swift b/UITests/Sources/ChiichHomeControlsTests.swift
+--- a/UITests/Sources/ChiichHomeControlsTests.swift
++++ b/UITests/Sources/ChiichHomeControlsTests.swift
+@@ -162,6 +162,36 @@
+         assertSpaceFilterCanBeSelectedAndCleared(app)
+     }
+     
++    // Existing regression methods never enable curated capture data.
++    func testStoreLightScreenshots() async throws {
++        try await captureStoreScreenshots(.chiichHomeControls, appearance: "light")
++    }
++
++    func testStoreGraphiteScreenshots() async throws {
++        try await captureStoreScreenshots(.chiichHomeControlsGraphite, appearance: "graphite")
++    }
++
++    private func captureStoreScreenshots(_ identifier: UITestsScreenIdentifier, appearance: String) async throws {
++        let app = Application.launch(identifier, storeCapture: true)
++        assertChatsAreVisible(app)
++        assertSingleHomeSearch(app)
++        let demoRoom = "Планы на выходные"
++        XCTAssertTrue(app.buttons[A11yIdentifiers.homeScreen.roomName(demoRoom)].waitForExistence(timeout: 5))
++        XCTAssertFalse(app.buttons[A11yIdentifiers.homeScreen.roomName(groupRoom)].exists)
++        try await attachRootScreenshot(app, name: "CHIICH-store-chats-\(appearance)")
++
++        openSettings(app)
++        XCTAssertTrue(control(Control.profile, in: app).exists)
++        try await attachRootScreenshot(app, name: "CHIICH-store-settings-\(appearance)")
++        closeSettings(app)
++
++        app.buttons[Control.search].tap()
++        assertNativeSearch(app, query: demoRoom, expectedRoom: demoRoom)
++        try await attachRootScreenshot(app, name: "CHIICH-store-search-\(appearance)")
++        closeNativeSearch(app)
++        assertChatsAreVisible(app)
++    }
++
+     private func assertChatsAreVisible(_ app: XCUIApplication) {
+         XCTAssertTrue(app.buttons[Control.search].waitForExistence(timeout: 10))
+         XCTAssertTrue(app.buttons[Control.search].isHittable)
+diff --git a/ElementX/Sources/UITests/CHIICHStoreScreenshotFixture.swift b/ElementX/Sources/UITests/CHIICHStoreScreenshotFixture.swift
+new file mode 100644
+--- /dev/null
++++ b/ElementX/Sources/UITests/CHIICHStoreScreenshotFixture.swift
+@@ -0,0 +1,94 @@
++//
++// SPDX-License-Identifier: AGPL-3.0-only OR LicenseRef-Element-Commercial.
++// Please see LICENSE files in the repository root for full details.
++//
++// Synthetic content for CHIICH UI-test captures only.
++// These are not real accounts, messages or live-service acceptance results.
++//
++
++import Foundation
++import MatrixRustSDKMocks
++
++enum CHIICHStoreScreenshotFixture {
++    static let userID = "@demo:example.invalid"
++    static let displayName = "Демо ЧИИЧ"
++    static let status = UserStatus()
++    static let searchQuery = "Планы на выходные"
++
++    static var rooms: [RoomSummary] {
++        let referenceDate = Date()
++        return [
++            room(id: "weekend",
++                 name: searchQuery,
++                 message: "Давайте встретимся в парке в субботу.",
++                 date: referenceDate.addingTimeInterval(-120)),
++            room(id: "anna",
++                 name: "Анна",
++                 message: "Спасибо! Напишу, когда буду рядом.",
++                 date: referenceDate.addingTimeInterval(-600),
++                 personID: "@demo_anna:example.invalid",
++                 unreadCount: 2),
++            room(id: "family",
++                 name: "Семья",
++                 message: "Фотографии получились отличные!",
++                 date: referenceDate.addingTimeInterval(-1800)),
++            room(id: "project",
++                 name: "Новый проект",
++                 message: "Обсудим идеи завтра утром.",
++                 date: referenceDate.addingTimeInterval(-3600),
++                 unreadCount: 1),
++            room(id: "maksim",
++                 name: "Максим",
++                 message: "Договорились, до встречи!",
++                 date: referenceDate.addingTimeInterval(-7200),
++                 personID: "@demo_maksim:example.invalid")
++        ]
++    }
++
++    @MainActor
++    static func recentlyVisitedRooms(from summaries: [RoomSummary]) -> [JoinedRoomProxyProtocol] {
++        summaries.map { summary in
++            JoinedRoomProxyMock(.init(id: summary.id,
++                                     name: summary.name,
++                                     isDirect: summary.isDirect,
++                                     isSpace: false,
++                                     isEncrypted: false,
++                                     hasOngoingCall: false,
++                                     members: [],
++                                     ownUserID: userID))
++        }
++    }
++
++    private static func room(id: String,
++                             name: String,
++                             message: String,
++                             date: Date,
++                             personID: String? = nil,
++                             unreadCount: UInt = 0) -> RoomSummary {
++        let heroes = personID.map { [UserProfile(userID: $0, displayName: name)] } ?? []
++        return RoomSummary(room: RoomSDKMock(.init()),
++                           id: "!demo_\(id):example.invalid",
++                           joinRequestType: nil,
++                           isJoined: true,
++                           name: name,
++                           isDirect: personID != nil,
++                           isSpace: false,
++                           avatarURL: nil,
++                           heroes: heroes,
++                           activeMembersCount: personID == nil ? 4 : 2,
++                           lastMessage: AttributedString(message),
++                           lastMessageDate: date,
++                           lastMessageState: nil,
++                           unreadMessagesCount: unreadCount,
++                           unreadMentionsCount: 0,
++                           unreadNotificationsCount: unreadCount,
++                           notificationMode: .allMessages,
++                           canonicalAlias: nil,
++                           alternativeAliases: [],
++                           hasOngoingCall: false,
++                           activeCallIntent: nil,
++                           isMarkedUnread: false,
++                           isFavourite: false,
++                           isTombstoned: false)
++    }
++}
